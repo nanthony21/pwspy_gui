@@ -29,6 +29,10 @@ ExtraReflectanceCreator
 This application is used to generate `ExtraReflectanceCube` calibration files and upload them to google drive.
 
 """
+from . import version
+
+__author__ = "Nick Anthony"
+__verson__ = version.version
 
 __all__ = ['resources', 'appPath']
 import os
