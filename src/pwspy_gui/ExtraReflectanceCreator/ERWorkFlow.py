@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import logging
+import mpl_qt_viz
 
 
 
@@ -156,7 +157,10 @@ class ERWorkFlow:
                                                     cubes['cube'].iloc[0].wavelengths, numericalAperture)  # Theoretical reflectances
             matCombos = er.generateMaterialCombos(materials)
             combos = er.getAllCubeCombos(matCombos, cubes)
-            erCube, rExtraDict, self.plotnds = er.generateRExtraCubes(combos, theoryR, numericalAperture)
+            erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
+            self.plotnds = [mpl_qt_viz.visualizers.PlotNd(rExtraDict[k][0], title=k,
+                            indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
+                                     erCube.wavelengths]) for k in rExtraDict.keys()]
             logger = logging.getLogger(__name__)
             logger.info(f"Final data max is {erCube.data.max()}")
             logger.info(f"Final data min is {erCube.data.min()}")

@@ -43,9 +43,9 @@ app:
   own_environment: False
 
 about:
-  home: https://bitbucket.org/backmanlab/pwspy_gui/src/master/
+  home: https://github.com/nanthony21/pwspy_gui
   summary: 'A collection of GUIs providing users with easy access to PWS data analysis.'
   description: 'A collection of GUIs providing users with easy access to PWS data analysis.'
   doc_url: https://pwspy_gui.readthedocs.io/en/dev/
-  dev_url: https://bitbucket.org/backmanlab/pwspy_gui/src/master/
+  dev_url: https://github.com/nanthony21/pwspy_gui
   
