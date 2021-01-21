@@ -37,8 +37,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import logging
-import mpl_qt_viz
-
+from mpl_qt_viz.visualizers import PlotNd
 
 
 def _splitPath(path: str) -> List[str]:
@@ -158,7 +157,7 @@ class ERWorkFlow:
             matCombos = er.generateMaterialCombos(materials)
             combos = er.getAllCubeCombos(matCombos, cubes)
             erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
-            self.plotnds = [mpl_qt_viz.visualizers.PlotNd(rExtraDict[k][0], title=k,
+            self.plotnds = [PlotNd(rExtraDict[k][0], title=k,
                             indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
                                      erCube.wavelengths]) for k in rExtraDict.keys()]
             logger = logging.getLogger(__name__)
