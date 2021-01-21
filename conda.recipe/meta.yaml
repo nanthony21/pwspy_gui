@@ -1,15 +1,15 @@
+{% set version = load_setup_py_data().get("version") %}  # In order for this to work we must install setuptools_scm prior to running conda-build, hopefully they'll fix that.
 
 package:
   name: pwspy_gui
-  version: {{ environ['GIT_DESCRIBE_TAG'] + '.' + environ.get('GIT_DESCRIBE_NUMBER', '')  }}
+  version: {{ version }}
 
 source:
   path: .. #tells conda-build that the source code is in the parent directory.
 
 build:
   noarch: python
-  number: {{ GIT_DESCRIBE_NUMBER }}
-  string: {{environ['GIT_DESCRIBE_HASH']}}
+  number: 0
   entry_points:
     - PWSAnalysis = pwspy_gui.PWSAnalysisApp.__main__:main   # We must have an entry point specified for each entry point in setup.py or the noarch conda build will fail.
     - ERCreator = pwspy_gui.ExtraReflectanceCreator.__main__:main
