@@ -1,0 +1,2 @@
+recursive-exclude conda.recipe * 
+recursive-exclude .github *
