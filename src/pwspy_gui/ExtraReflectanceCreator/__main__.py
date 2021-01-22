@@ -125,7 +125,7 @@ def main():
         sys.exit(1)
     sys.excepthook = exception_hook
 
-    logger = logging.getLogger('pwspy')  # We use the root logger of the pwspy module so that all loggers in pwspy will be captured.
+    logger = logging.getLogger()  # We use the root logger so that all loggers in pwspy will be captured.
     logger.setLevel(logging.DEBUG)
     logger.addHandler(logging.StreamHandler(sys.stdout))
     appDataPath = os.path.join(appPath, 'ExtraReflectanceCreatorData')

@@ -71,7 +71,7 @@ def main():
             return False
 
     _setupDataDirectories()  # this must happen before the logger can be instantiated
-    logger = logging.getLogger('pwspy')  # We use the root logger of the pwspy module so that all loggers in pwspy will be captured.
+    logger = logging.getLogger()  # We use the root logger so that all loggers in pwspy will be captured.
 
     # This prevents errors from happening silently. Found on stack overflow.
     sys.excepthook_backup = sys.excepthook
