@@ -28,7 +28,7 @@ import os
 import psutil
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
-from pwspy import __version__ as version
+from pwspy_gui import __version__ as version
 from pwspy_gui.PWSAnalysisApp.utilities import BlinderDialog, RoiConverter
 from .dialogs import AnalysisSummaryDisplay
 from ._taskManagers.analysisManager import AnalysisManager
