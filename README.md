@@ -21,7 +21,7 @@ More information [here](https://docs.conda.io/projects/conda/en/latest/user-guid
 
 #### Installing Manually
 If you have the built package (.tar.gz file) then you can install the package by pointing `conda install` to it.
-Install the package with `conda install -c file:///{tarGzFileDestination} -c conda-forge pwspy`.
+Install the package with `conda install -c file:///{tarGzFileDestination} -c conda-forge pwspy_gui`.
 
 #### First time startup
 While the `pwspy_gui` package has many facets one of the major components is the "PWS Analysis App" GUI which is used to analyze PWS data.
@@ -31,12 +31,12 @@ There are multiple ways that you can run this application:
 the `Anaconda` category  
 
 2. Type `PWSAnalysis` into the command prompt for the Conda environment
-that `pwspy` is installed in.  
+that `pwspy_gui` is installed in.  
 
 3. In `Anaconda-Navigator` an app named `pwspy` should appear. 
 
 The first time you run the GUI on a computer you will
-need to sign into the Google Drive database where calibration data is stored, the account name is `backman.lab@gmail.com`.
+need to sign into the Google Drive database where calibration data is stored.
 
  
 ## Building from source and distributing
@@ -45,9 +45,11 @@ need to sign into the Google Drive database where calibration data is stored, th
 First you will need the `Conda` package manager. If you have installed Anaconda then Conda is included.
 On Windows you will need to use the `Anaconda Prompt` rather than the default Windows `Command Prompt`.
 In addition you will need:  
- - conda-build: `conda install conda-build`  
- - anaconda-client: `conda install anaconda-client`  
- - setuptools_scm: `conda install -c conda-forge gitpython`  
+ - conda-build
+ - anaconda-client  
+ - setuptools_scm
+ 
+ These can be installed with the following command `conda install conda-build anaconda-client gitpython`  
 
 #### Automatic Method (Recommended):
 Use the python in your `base` anaconda environment to run `python installScripts\build.py`.
@@ -60,6 +62,6 @@ The version number can be understood as `a.b.c.d-xyz` where `a.b.c` are numbers 
 
 #### Uploading a newly built version of the package to Anaconda Cloud
 The lab has a `Cloud` account at anaconda.org. The username is `backmanlab` and the password is `UNKNOWN!!!!` (do not put the password here, this git repository is publically available, we prefer not to get hacked).
-You can upload the package to the lab's Anaconda Cloud account using `anaconda login` to log into the account and then with `anaconda upload build/noarch/pwspy_xxxxxxxxxx.tar.gz`
+You can upload the package to the lab's Anaconda Cloud account using `anaconda login` to log into the account and then with `anaconda upload build/noarch/pwspy_gui_xxxxxxxxxx.tar.gz`
 
 
