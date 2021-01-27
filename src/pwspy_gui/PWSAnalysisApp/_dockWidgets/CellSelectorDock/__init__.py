@@ -72,7 +72,7 @@ class CellSelectorDock(CellSelector, QDockWidget):
         self._pathFilter.view().setMinimumWidth(width)
 
         self._expressionFilter = QLineEdit(self._bottomBar)
-        description = "Python boolean expression.\n\tCell#: {num},\n\tAnalysis names: {analyses},\n\tROI names: {rois},\n\tID tag: {idTag}.\nE.G. `{num} > 5 and 'nucleus' in {rois}`"
+        description = "Python boolean expression.\n\tCell#: {num},\n\tAnalysis names: {analyses},\n\tROI names: {roiNames},\n\tRoi numbers: {roiNums},\n\tID tag: {idTag}.\nE.G. `{num} > 5 and 'nucleus' in {roiNames}`"
         self._expressionFilter.setPlaceholderText(description.replace('\n', '').replace('\t', ''))  #Strip out the white space
         self._expressionFilter.setToolTip(description)
         self._expressionFilter.returnPressed.connect(self._executeFilter)
@@ -165,7 +165,12 @@ class CellSelectorDock(CellSelector, QDockWidget):
                         analyses += item.acqDir.pws.getAnalyses()
                     if item.acqDir.dynamics:
                         analyses += item.acqDir.dynamics.getAnalyses()
-                    ret = bool(eval(expr.format(num=item.num, analyses=analyses, rois=[i[0] for i in item.acqDir.getRois()], idTag=item.acqDir.idTag)))
+                    roiNames, roiNums, fformats = zip(*item.acqDir.getRois())
+                    ret = bool(eval(expr.format(num=item.num,
+                                                analyses=analyses,
+                                                roiNames=roiNames,
+                                                roiNums=roiNums,
+                                                idTag=item.acqDir.idTag)))
                 except Exception as e:
                     QMessageBox.information(self, 'Hmm', f'{expr} is not a valid boolean expression.')
                     return
