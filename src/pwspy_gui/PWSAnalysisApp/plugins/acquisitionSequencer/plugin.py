@@ -8,8 +8,8 @@ from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPlugin
 import os
 
 from ._ui.widget import SequenceViewer
-from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
-from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer.steps import SequencerStep
+from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
+from pwspy.utility.acquisition.steps import SequencerStep
 from pwspy.dataTypes import AcqDir
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector

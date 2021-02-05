@@ -2,9 +2,9 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton
 
-from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer.steps import SequencerStep
+from pwspy.utility.acquisition.steps import SequencerStep
 from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer._ui.TreeView import MyTreeView, DictTreeView
-from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer.sequencerCoordinate import SequencerCoordinateRange
+from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange
 
 
 class SequenceViewer(QWidget):

@@ -16,19 +16,15 @@ class TreeModel(QtCore.QAbstractItemModel):
         return self._rootItem
 
     def columnCount(self, parent: QModelIndex) -> int:
-        if parent.isValid():
-            return parent.internalPointer().columnCount()
-        else:
-            return self._rootItem.columnCount()
+        return 1
 
     def data(self, index: QModelIndex, role: int):
         if not index.isValid():
             return None
-        if role != QtCore.Qt.DisplayRole:
+        if role != QtCore.Qt.DisplayRole:  # We only support this role type. Return the treeItem itself as the data.
             return None
         item: TreeItem = index.internalPointer()
-        col = index.column()
-        return item.data(col)
+        return item
 
     def flags(self, index):
         if not index.isValid():
@@ -36,7 +32,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
 
     def setData(self, index: QModelIndex, value: typing.Any, role: int = ...) -> bool:
-        return True
+        return True  # We don't allow setting data. Always report success.
 
     def headerData(self, section, orientation, role):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
@@ -72,3 +68,12 @@ class TreeModel(QtCore.QAbstractItemModel):
             return self._rootItem.childCount()
         else:
             return parent.internalPointer().childCount()
+
+"""def data(self, role: int) -> typing.Any:
+    try:
+        return self._itemData[role]
+    except KeyError:
+        return None
+
+def setData(self, role: int, data: typing.Any):
+    self._itemData[role] = data"""
