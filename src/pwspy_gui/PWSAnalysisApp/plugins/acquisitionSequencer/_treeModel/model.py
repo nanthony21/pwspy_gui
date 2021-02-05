@@ -9,7 +9,6 @@ class TreeModel(QtCore.QAbstractItemModel):
     def __init__(self, root: TreeItem, parent=None):
         super(TreeModel, self).__init__(parent)
         self._rootItem = TreeItem()  # This will be invisible but will determine the header labels.
-        self._rootItem.setData(0, "Steps")
         self._rootItem.addChild(root)
 
     def invisibleRootItem(self) -> TreeItem:
@@ -35,9 +34,10 @@ class TreeModel(QtCore.QAbstractItemModel):
         return True  # We don't allow setting data. Always report success.
 
     def headerData(self, section, orientation, role):
-        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-            return self._rootItem.data(section)
-        return None
+        return "Steps"
+        # if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+        #     return self._rootItem.data(section)
+        # return None
 
     def index(self, row: int, column: int, parent: QModelIndex):
         # if not self.hasIndex(row, column, parent): #This was causing bugs
@@ -69,11 +69,3 @@ class TreeModel(QtCore.QAbstractItemModel):
         else:
             return parent.internalPointer().childCount()
 
-"""def data(self, role: int) -> typing.Any:
-    try:
-        return self._itemData[role]
-    except KeyError:
-        return None
-
-def setData(self, role: int, data: typing.Any):
-    self._itemData[role] = data"""
