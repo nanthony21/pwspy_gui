@@ -10,6 +10,7 @@ import os
 from ._ui.widget import SequenceViewer
 from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
 from pwspy.utility.acquisition.steps import SequencerStep
+from pwspy.utility.acquisition import loadDirectory
 from pwspy.dataTypes import AcqDir
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
@@ -51,28 +52,23 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         """This method will be called when the CellSelector indicates that new cells have been loaded to the selector."""
         if len(cells) == 0:  # This causes a crash
             return
+        cellFilePaths = [acq.filePath for acq in cells]
+
         #Search the parent directory for a `sequence.pwsseq` file containing the sequence information.
         paths = [i.filePath for i in cells]
         commonPath = os.path.commonpath(paths)
         # We will search up to 3 parent directories for a sequence file
         for i in range(3):
-            if os.path.exists(os.path.join(commonPath, 'sequence.pwsseq')):
-                with open(os.path.join(commonPath, 'sequence.pwsseq')) as f:
-                    try:
-                        self._sequence = SequencerStep.fromJson(f.read())
-                    except:  # if the file format is messed up this will fail, dont' let it crash the whole plugin though.
-                        commonPath = os.path.split(commonPath)[0]  # Go up one directory
-                        continue
-                    self._cells = []
-                    for cell in cells:
-                        try:
-                            self._cells.append(SeqAcqDir(cell))  # TODO should probably verify that the coords match up with the sequence we loaded.
-                        except:  # Coordinates weren't found
-                            pass
-                    self._ui.setSequenceStepRoot(self._sequence)
-                return
-            commonPath = os.path.split(commonPath)[0]  # Go up one directory
-        # We only get this far if the sequence search fails.
+            try:
+                sequenceRoot, foundAcqs = loadDirectory(commonPath)
+            except FileNotFoundError:
+                commonPath = os.path.split(commonPath)[0]  # Go up one directory
+                continue
+            self._cells = [acq for acq in foundAcqs if acq.filePath in cellFilePaths]
+            self._sequence = sequenceRoot
+            self._ui.setSequenceStepRoot(self._sequence)
+            return
+        # We only get this far if the sequence file search fails.
         self._sequence = None
         self._cells = None
 
