@@ -39,12 +39,11 @@ from pwspy_gui.sharedWidgets.extraReflectionManager import ERManager
 from typing import List
 import typing
 
-logger = logging.getLogger(__name__)
 
-
-class PWSApp(QApplication): #TODO add a scriptable interface to load files, open roi window, run analysis etc.
+class PWSApp(QApplication):  # TODO add a scriptable interface to load files, open roi window, run analysis etc.
     def __init__(self, args):
         super().__init__(args)
+        logger = logging.getLogger(__name__)
         self.setApplicationName(f"PWS Analysis v{version.split('-')[0]}")
         splash = QSplashScreen(QPixmap(os.path.join(resources, 'pwsLogo.png')))
         splash.show()

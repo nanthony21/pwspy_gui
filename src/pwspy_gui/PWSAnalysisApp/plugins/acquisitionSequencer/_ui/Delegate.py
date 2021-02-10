@@ -5,8 +5,8 @@ from PyQt5.QtCore import QSize, pyqtSignal
 from PyQt5.QtGui import QTextDocument, QAbstractTextDocumentLayout, QPalette
 from PyQt5.QtWidgets import QStyledItemDelegate, QWidget, QStyleOptionViewItem, QStyle, QGridLayout, QTableWidget, \
     QTableWidgetItem, QAbstractItemView, QSizePolicy, QApplication
-from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer.sequencerCoordinate import IterationRangeCoordStep
-from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer.steps import SequencerStep, CoordSequencerStep, StepTypeNames, ContainerStep
+from pwspy.utility.acquisition.sequencerCoordinate import IterationRangeCoordStep
+from pwspy.utility.acquisition.steps import SequencerStep, CoordSequencerStep, StepTypeNames, ContainerStep
 
 
 class IterationRangeEditor(QWidget):
