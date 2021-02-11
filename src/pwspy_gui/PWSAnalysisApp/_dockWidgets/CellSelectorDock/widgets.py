@@ -352,16 +352,29 @@ class CellTableWidget(QTableWidget):
             self.refreshCellItems()
 
     def _displayAnalysisSettings(self):
-        analyses = set()
+        pwsAnalyses = set()
         for i in self.selectedCellItems:
-            #We assume that analyses with the same name have the same settings
-            analyses.update(i.acqDir.pws.getAnalyses())
-        for an in analyses:
+            if i.acqDir.pws is not None:
+                #We assume that analyses with the same name have the same settings
+                pwsAnalyses.update(i.acqDir.pws.getAnalyses())
+        for an in pwsAnalyses:
             for i in self.selectedCellItems:
-                if an in i.acqDir.pws.getAnalyses():
-                    d = DictDisplayTreeDialog(self, i.acqDir.pws.loadAnalysis(an).settings._asDict(), title=an)
-                    d.show()
-                    break
+                if i.acqDir.pws is not None:
+                    if an in i.acqDir.pws.getAnalyses():
+                        d = DictDisplayTreeDialog(self, i.acqDir.pws.loadAnalysis(an).settings._asDict(), title=an)
+                        d.show()
+                        break
+        dynAnalysis = set()
+        for i in self.selectedCellItems:
+            if i.acqDir.dynamics is not None:
+                dynAnalysis.update(i.acqDir.dynamics.getAnalyses())
+        for an in dynAnalysis:
+            for i in self.selectedCellItems:
+                if i.acqDir.dynamics is not None:
+                    if an in i.acqDir.dynamics.getAnalyses():
+                        d = DictDisplayTreeDialog(self, i.acqDir.dynamics.loadAnalysis(an).settings._asDict(), title=an)
+                        d.show()
+                        break
 
     def _displayCellMetadata(self):
         for i in self.selectedCellItems:
