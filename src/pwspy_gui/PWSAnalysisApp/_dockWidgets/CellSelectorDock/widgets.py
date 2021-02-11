@@ -14,13 +14,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
-
+import typing as t_
 import json
-import logging
 import os
-import typing
 from json import JSONDecodeError
-from typing import List, Optional, Type
 
 import logging
 from PyQt5 import QtCore, QtGui
@@ -33,8 +30,11 @@ from pwspy.dataTypes import AcqDir, ICMetaData, DynMetaData
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.dictDisplayTree import DictDisplayTreeDialog
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.tables import NumberTableWidgetItem
+if t_.TYPE_CHECKING:
+    from pwspy.analysis.pws import PWSAnalysisResults
+    from pwspy.analysis.dynamics import DynamicsAnalysisResults
 
-def evalToolTip(cls: Type[QWidget], method):
+def evalToolTip(cls: t_.Type[QWidget], method):
     """Given a QWidget and a function that returns a string, this decorator returns a modified class that will evaluate
     the function each time the tooltip is requested."""
     class newClass(cls):
@@ -47,7 +47,7 @@ def evalToolTip(cls: Type[QWidget], method):
 
 class CellTableWidgetItem:
     """Represents a single row of the CellTableWidget and corresponds to a single PWS acquisition."""
-    def __init__(self, acq: AcqDir, label: str, num: int, additionalWidgets: typing.Sequence[QWidget] = None):
+    def __init__(self, acq: AcqDir, label: str, num: int, additionalWidgets: t_.Sequence[QWidget] = None):
         self.acqDir = acq
         self.num = num
         self.path = label
@@ -55,7 +55,9 @@ class CellTableWidgetItem:
         self.notesButton = evalToolTip(QPushButton, acq.getNotes)("Open")
         self.notesButton.setFixedSize(40, 30)
         self.pathLabel = QTableWidgetItem(self.path)
+        self.pathLabel.setToolTip(acq.idTag)
         self.numLabel = NumberTableWidgetItem(num)
+        self.numLabel.setToolTip(acq.idTag)
         self.roiLabel = NumberTableWidgetItem(0)
         self.anLabel = NumberTableWidgetItem(0)
         self.notesButton.released.connect(self.acqDir.editNotes)
@@ -69,11 +71,14 @@ class CellTableWidgetItem:
             i.setTextAlignment(QtCore.Qt.AlignCenter)
         for i in [self.pathLabel, self.pLabel, self.dLabel, self.fLabel]:  # Make uneditable
             i.setFlags(i.flags() ^ QtCore.Qt.ItemIsEditable)
-        for acq, label in [(self.acqDir.pws, self.pLabel), (self.acqDir.dynamics, self.dLabel)]:
-            if acq is not None:
-                label.setText('Y'); label.setBackground(QtCore.Qt.darkGreen)
+        for metadata, label in [(self.acqDir.pws, self.pLabel), (self.acqDir.dynamics, self.dLabel)]:
+            if metadata is not None:
+                label.setText('Y')
+                label.setBackground(QtCore.Qt.darkGreen)
+                label.setToolTip(metadata.idTag)
             else:
-                label.setText('N'); label.setBackground(QtCore.Qt.white)
+                label.setText('N')
+                label.setBackground(QtCore.Qt.white)
         if len(self.acqDir.fluorescence) != 0: self.fLabel.setText('Y'); self.fLabel.setBackground(QtCore.Qt.darkGreen)
         else: self.fLabel.setText('N'); self.fLabel.setBackground(QtCore.Qt.white)
         self._items = [self.pathLabel, self.numLabel, self.roiLabel, self.anLabel] + self.pluginWidgets #This list is used for changing background color and for setting all items selected.
@@ -195,7 +200,7 @@ class CellTableWidget(QTableWidget):
     referencesChanged = QtCore.pyqtSignal(bool, list)
     itemsCleared = QtCore.pyqtSignal()
 
-    def __init__(self, parent, additionalColumns: typing.Sequence[str] = None):
+    def __init__(self, parent, additionalColumns: t_.Sequence[str] = None):
         super().__init__(parent)
         self.setSortingEnabled(True)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -226,11 +231,11 @@ class CellTableWidget(QTableWidget):
         self.palette().setColor(QPalette.HighlightedText, QtCore.Qt.white)
 
     @property
-    def cellItems(self) -> List[CellTableWidgetItem]:
+    def cellItems(self) -> t_.List[CellTableWidgetItem]:
         return self._cellItems
 
     @property
-    def selectedCellItems(self) -> typing.List[CellTableWidgetItem]:
+    def selectedCellItems(self) -> t_.List[CellTableWidgetItem]:
         """Returns the rows that have been selected."""
         rowIndices = [i.row() for i in self.selectedIndexes() if i.column()==0]  # This returns indexes for all items, which means we get several for a single row. Only look at the 0 column indexes.
 
@@ -242,22 +247,7 @@ class CellTableWidget(QTableWidget):
         for i in self._cellItems:
             i.refresh()
 
-    # def addCellItem(self, item: CellTableWidgetItem) -> None:
-    #     row = len(self._cellItems)
-    #     self.setSortingEnabled(False)  # The fact that we are adding items assuming its the last row is a problem if sorting is on.
-    #     self.setRowCount(row + 1)
-    #     self.setItem(row, 0, item.pathLabel)
-    #     self.setItem(row, 1, item.numLabel)
-    #     self.setItem(row, 2, item.roiLabel)
-    #     self.setItem(row, 3, item.anLabel)
-    #     self.setCellWidget(row, 4, item.notesButton)
-    #     self.setItem(row, 5, item.pLabel)
-    #     self.setItem(row, 6, item.dLabel)
-    #     self.setItem(row, 7, item.fLabel)
-    #     self.setSortingEnabled(True)
-    #     self._cellItems.append(item)
-
-    def addCellItems(self, items: List[CellTableWidgetItem]) -> None:
+    def addCellItems(self, items: t_.List[CellTableWidgetItem]) -> None:
         row = len(self._cellItems)
         self.setSortingEnabled(False)
         self.setRowCount(row + len(items))
@@ -361,7 +351,10 @@ class CellTableWidget(QTableWidget):
             for i in self.selectedCellItems:
                 if i.acqDir.pws is not None:
                     if an in i.acqDir.pws.getAnalyses():
-                        d = DictDisplayTreeDialog(self, i.acqDir.pws.loadAnalysis(an).settings._asDict(), title=an)
+                        analysis: PWSAnalysisResults = i.acqDir.pws.loadAnalysis(an)
+                        settingsDict = analysis.settings.asDict()
+                        settingsDict['referenceIdTag'] = analysis.referenceIdTag  # Add useful runtime information from the analysis.
+                        d = DictDisplayTreeDialog(self, settingsDict, title=an)
                         d.show()
                         break
         dynAnalysis = set()
@@ -372,7 +365,10 @@ class CellTableWidget(QTableWidget):
             for i in self.selectedCellItems:
                 if i.acqDir.dynamics is not None:
                     if an in i.acqDir.dynamics.getAnalyses():
-                        d = DictDisplayTreeDialog(self, i.acqDir.dynamics.loadAnalysis(an).settings._asDict(), title=an)
+                        analysis: DynamicsAnalysisResults = i.acqDir.dynamics.loadAnalysis(an)
+                        settingsDict = analysis.settings.asDict()
+                        settingsDict['referenceIdTag'] = analysis.referenceIdTag  # Add useful runtime information
+                        d = DictDisplayTreeDialog(self, settingsDict, title=an)
                         d.show()
                         break
 
@@ -435,9 +431,9 @@ class ReferencesTable(QTableWidget):
         self.customContextMenuRequested.connect(self._showContextMenu)
         cellTable.referencesChanged.connect(self.updateReferences)
         cellTable.itemsCleared.connect(self._clearItems)
-        self._references: typing.List[CellTableWidgetItem] = []
+        self._references: t_.List[CellTableWidgetItem] = []
 
-    def updateReferences(self, state: bool, items: typing.List[CellTableWidgetItem]):
+    def updateReferences(self, state: bool, items: t_.List[CellTableWidgetItem]):
         """state indicates if the cells are being added or being removed as references."""
         if state:
             for item in items:
@@ -458,7 +454,7 @@ class ReferencesTable(QTableWidget):
                             break
 
     @property
-    def selectedReferenceMeta(self) -> Optional[AcqDir]:
+    def selectedReferenceMeta(self) -> t_.Optional[AcqDir]:
         """Returns the ICMetadata that have been selected. Return None if nothing is selected."""
         items: List[ReferencesTableItem] = self.selectedItems()
         assert len(items) <= 1
