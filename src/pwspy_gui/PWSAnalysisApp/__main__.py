@@ -94,7 +94,7 @@ def main():
     try:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"  # TODO replace these options with proper high dpi handling. no pixel specific widths.
         QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
-        logger.debug("About to construct `PWSApp`") #TODO filter box not wide enough, freezing mac Google?
+        logger.debug("About to construct `PWSApp`")
         app = PWSApp(sys.argv)
         logger.debug("Finished constructing `PWSApp`")
         #Testing script
