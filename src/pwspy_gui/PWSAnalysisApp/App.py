@@ -42,8 +42,10 @@ import typing
 
 class PWSApp(QApplication):  # TODO add a scriptable interface to load files, open roi window, run analysis etc.
     def __init__(self, args):
-        super().__init__(args)
         logger = logging.getLogger(__name__)
+        logger.debug("About to call PWSApp superclass constructor")
+        super().__init__(args)
+        logger.debug("PWSApp superclass constructor is finished")
         self.setApplicationName(f"PWS Analysis v{version.split('-')[0]}")
         splash = QSplashScreen(QPixmap(os.path.join(resources, 'pwsLogo.png')))
         splash.show()

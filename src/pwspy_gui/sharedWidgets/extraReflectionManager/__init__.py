@@ -78,7 +78,10 @@ class ERManager:
         self.dataComparator = ERDataComparator(self._downloader, self._directory)
 
     def _logIn(self, parentWidget: QWidget) -> typing.Tuple[bool, ERDownloader]:
+        logger = logging.getLogger(__name__)
+        logger.debug("Calling ERDownloader.getCredentials")
         creds = ERDownloader.getCredentials(applicationVars.googleDriveAuthPath)
+        logger.debug("Finished ERDownloader.getCredentials")
         if creds is None:  # Check if the google drive credentials exists and if they don't then give the user a message.
             msg = QMessageBox(parentWidget)
             msg.setIcon(QMessageBox.Information)

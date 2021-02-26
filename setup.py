@@ -46,7 +46,7 @@ setup(name='pwspy_gui',
                         'google-auth-httplib2',
                         'google-auth-oauthlib',
                         'PyQt5',
-                        'pwspy',  # Core pws package, available on backmanlab anaconda cloud account.
+                        'pwspy>=0.2.2',  # Core pws package, available on backmanlab anaconda cloud account.
                         'mpl_qt_viz>=1.0.5'],  # Plotting package available on PyPi and the backmanlab anaconda cloud account. Written for this project by Nick Anthony
       package_dir={'': 'src'},
       package_data={'pwspy_gui': ['_resources/*',

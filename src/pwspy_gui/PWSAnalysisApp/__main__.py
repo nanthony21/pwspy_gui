@@ -77,7 +77,7 @@ def main():
     sys.excepthook_backup = sys.excepthook
     def exception_hook(exctype, value, traceBack):
         logger.exception("Unhandled Exception! :", exc_info=value, stack_info=True)
-        sys.excepthook_backup(exctype, value, traceBack)  # Run the rror through the default exception hook
+        sys.excepthook_backup(exctype, value, traceBack)  # Run the error through the default exception hook
         sys.exit(1)
     sys.excepthook = exception_hook
 
@@ -94,7 +94,9 @@ def main():
     try:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"  # TODO replace these options with proper high dpi handling. no pixel specific widths.
         QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
+        logger.debug("About to construct `PWSApp`") #TODO filter box not wide enough, freezing mac Google?
         app = PWSApp(sys.argv)
+        logger.debug("Finished constructing `PWSApp`")
         #Testing script
         # app.changeDirectory(r'\\backmanlabnas\home\Year3\ethanolTimeSeries\AndrewNUData\+15', False)
         # app.window.cellSelector.setSelectedCells([app.window.cellSelector.getAllCellMetas()[0]])
