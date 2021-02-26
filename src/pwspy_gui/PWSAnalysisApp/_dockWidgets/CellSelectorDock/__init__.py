@@ -21,6 +21,7 @@ from typing import List, Optional
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QPoint
+from PyQt5.QtGui import QFontMetrics
 from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QComboBox, QLineEdit, QGridLayout, QSplitter, \
     QSizePolicy, QMessageBox, QPushButton, QMenu, QAction
 import pwspy.dataTypes as pwsdt
@@ -62,14 +63,6 @@ class CellSelectorDock(CellSelector, QDockWidget):
 
         self._pathFilter = QComboBox(self._bottomBar)
         self._pathFilter.setEditable(True)
-        self._pathFilter.setStyleSheet('''*     
-        QComboBox QAbstractItemView 
-            {
-            min-width: 200px;
-            }
-        ''')  # This makes the dropdown wider so we can actually read.
-        width = self._pathFilter.minimumSizeHint().width()
-        self._pathFilter.view().setMinimumWidth(width)
 
         self._expressionFilter = QLineEdit(self._bottomBar)
         description = "Python boolean expression.\n\tCell#: {num},\n\tAnalysis names: {analyses},\n\tROI names: {roiNames},\n\tRoi numbers: {roiNums},\n\tID tag: {idTag}.\nE.G. `{num} > 5 and 'nucleus' in {roiNames}`"
@@ -106,17 +99,6 @@ class CellSelectorDock(CellSelector, QDockWidget):
             menu.addAction(action)
         menu.exec(self._pluginsButton.mapToGlobal(QPoint(0, self._pluginsButton.height())))
 
-    # def _addCell(self, fileName: str, workingDir: str):
-    #     try:
-    #         cell = pwsdt.AcqDir(fileName)
-    #     except OSError:
-    #         return
-    #     cellItem = CellTableWidgetItem(cell, os.path.split(fileName)[0][len(workingDir) + 1:],
-    #                                     int(fileName.split('Cell')[-1]))
-    #     if cellItem.isReference():
-    #         self._refTableWidget.updateReferences(True, [cellItem])
-    #     self._tableWidget.addCellItem(cellItem)
-
     def _addCells(self, acquisitions: List[pwsdt.AcqDir], workingDir: str):
         cellItems = []
         for acq in acquisitions:
@@ -144,7 +126,10 @@ class CellSelectorDock(CellSelector, QDockWidget):
         paths = []
         for i in self._tableWidget.cellItems:
             paths.append(i.path)
-        self._pathFilter.addItems(set(paths))
+        paths = set(paths)  # Get rid of duplicates
+        self._pathFilter.addItems(paths)
+        maxWidth = max([self._pathFilter.view().fontMetrics().width(text) for text in paths])  # The width needed to show the longest path in the popup.
+        self._pathFilter.view().setMinimumWidth(maxWidth)
         self._pathFilter.currentIndexChanged.connect(self._executeFilter)  # reconnect
 
     def _executeFilter(self): #TODO the filter should also hide the reference items. this will require some changes ot the referece item table code.
