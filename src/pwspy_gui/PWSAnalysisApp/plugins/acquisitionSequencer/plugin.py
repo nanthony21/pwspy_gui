@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typing
+import warnings
 
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QApplication
@@ -10,7 +11,7 @@ import os
 from ._ui.widget import SequenceViewer
 from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
 from pwspy.utility.acquisition.steps import SequencerStep
-from pwspy.utility.acquisition import loadDirectory
+from pwspy.utility.acquisition import loadDirectory, RuntimeSequenceSettings
 from pwspy.dataTypes import AcqDir
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
@@ -60,12 +61,23 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         # We will search up to 3 parent directories for a sequence file
         for i in range(3):
             try:
-                sequenceRoot, foundAcqs = loadDirectory(commonPath)
+                sequenceRoot = RuntimeSequenceSettings.fromJsonFile(commonPath)
+                if sequenceRoot.uuid is None:
+                    warnings.warn("Old acquisition sequence file must have been loaded. No UUID found. Acquisitions returned by this function may not actually belong to this sequence.")
             except FileNotFoundError:
                 commonPath = os.path.split(commonPath)[0]  # Go up one directory
                 continue
+
+            foundAcqs = []
+            for f in cells:
+                try:
+                    foundAcqs.append(SeqAcqDir(f))
+                except FileNotFoundError:
+                    pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
+            foundAcqs = [acq for acq in foundAcqs if acq.sequencerCoordinate.uuid == sequenceRoot.uuid]  # Filter out acquisitions that don't have a matching UUID to the sequence file.
+
             self._cells = [acq for acq in foundAcqs if acq.filePath in cellFilePaths]
-            self._sequence = sequenceRoot
+            self._sequence = sequenceRoot.rootStep
             self._ui.setSequenceStepRoot(self._sequence)
             return
         # We only get this far if the sequence file search fails.
