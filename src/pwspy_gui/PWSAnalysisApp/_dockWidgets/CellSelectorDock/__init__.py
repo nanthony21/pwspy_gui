@@ -29,6 +29,7 @@ from pwspy_gui.PWSAnalysisApp._dockWidgets.CellSelectorDock.widgets import Refer
 from .widgets import CellTableWidgetItem, CellTableWidget, ReferencesTable
 from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
 from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPluginSupport
+from ...sharedWidgets import ScrollableMessageBox
 
 
 class CellSelectorDock(CellSelector, QDockWidget):
@@ -173,14 +174,18 @@ class CellSelectorDock(CellSelector, QDockWidget):
     def loadNewCells(self, fileNames: List[str], workingDir: str):
         self._clearCells()
         acqs = []
+        errs = []
         for f in fileNames:
             try:
                 acqs.append(pwsdt.AcqDir(f))
             except OSError as e:
                 logger = logging.getLogger(__name__)
+                errs.append(f)
                 logger.warning(f"Failed to load {f}")
                 logger.exception(e)
                 continue
+        if len(errs) > 0:
+            ScrollableMessageBox.information(self, "Load Errors", f"The following images failed to load:\n {', '.join(errs)}")
         self._pluginSupport.notifyNewCellsLoaded(acqs)
         self._addCells(acqs, workingDir)
         self._updateFilters()
