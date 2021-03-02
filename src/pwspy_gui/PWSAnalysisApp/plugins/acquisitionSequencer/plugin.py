@@ -1,7 +1,7 @@
 from __future__ import annotations
 import typing
 import warnings
-
+import logging
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QApplication
 
@@ -37,7 +37,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         """set the CellSelector that this plugin is associated to."""
         self._selector = selector
         self._ui.setParent(parent)
-        self._ui.setWindowFlags(QtCore.Qt.Window) # Without this is just gets added to the main window in a weird way.
+        self._ui.setWindowFlags(QtCore.Qt.Window)  # Without this is just gets added to the main window in a weird way.
 
     @requirePluginActive
     def onCellsSelected(self, cells: typing.List[pwsdt.AcqDir]):
@@ -58,6 +58,8 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         #Search the parent directory for a `sequence.pwsseq` file containing the sequence information.
         paths = [i.filePath for i in cells]
         commonPath = os.path.commonpath(paths)
+        logger = logging.getLogger(__name__)
+        logger.debug(f"New cells loaded at common path: {commonPath}")
         # We will search up to 3 parent directories for a sequence file
         for i in range(3):
             try:
@@ -66,6 +68,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
                     warnings.warn("Old acquisition sequence file must have been loaded. No UUID found. Acquisitions returned by this function may not actually belong to this sequence.")
             except FileNotFoundError:
                 commonPath = os.path.split(commonPath)[0]  # Go up one directory
+                logger.debug(f"No sequence file found. Trying again at: {commonPath}")
                 continue
 
             foundAcqs = []
@@ -75,7 +78,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
                 except FileNotFoundError:
                     pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
             foundAcqs = [acq for acq in foundAcqs if acq.sequencerCoordinate.uuid == sequenceRoot.uuid]  # Filter out acquisitions that don't have a matching UUID to the sequence file.
-
+            logger.debug(f"Successfully loaded {len(foundAcqs)} sequenced acquisitions.")
             self._cells = [acq for acq in foundAcqs if acq.filePath in cellFilePaths]
             self._sequence = sequenceRoot.rootStep
             self._ui.setSequenceStepRoot(self._sequence)
