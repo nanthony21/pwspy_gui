@@ -32,7 +32,10 @@ class MyTreeView(QTreeView):
         self.setCurrentIndex(idx)
 
         delegate: IterationRangeDelegate = self.itemDelegate()
-        self.closeEditor(delegate.editor, QAbstractItemDelegate.NoHint)  # Close the editor to indicate to the user that the change has been accepted.
+        try:
+            self.closeEditor(delegate.editor, QAbstractItemDelegate.NoHint)  # Close the editor to indicate to the user that the change has been accepted.
+        except RuntimeError:  # Sometimes the editor has been deleted in the c++ layer causing an issue
+            pass
 
     def setRoot(self, root: SequencerStep) -> None:
         """
