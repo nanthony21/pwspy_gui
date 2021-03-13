@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QTreeView, QWidget, QTreeWidget, QTreeWidgetItem, QA
 from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer._treeModel.model import TreeModel
 from pwspy.utility.acquisition import SequencerStep
 from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer._ui.Delegate import IterationRangeDelegate
-from pwspy.utility.acquisition.sequencerCoordinate import IterationRangeCoordStep, SequencerCoordinateRange
+from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange
 
 
 class MyTreeView(QTreeView):
@@ -57,9 +57,9 @@ class MyTreeView(QTreeView):
         step: SequencerStep = idx.internalPointer()
         coordSteps = []
         while step is not self.model().invisibleRootItem(): # This will break out once we reach the root item.
-            coordStep = step.data(QtCore.Qt.EditRole)  # The item delegate saves an iterationRangeCoordStep in the `editRole` data slot of steps.
+            coordStep = step.data(QtCore.Qt.EditRole)  # The item delegate saves an tuple indicated the range of iterations selected in the `editRole` data slot of steps.
             if coordStep is None:
-                coordSteps.append(IterationRangeCoordStep(step.id, None))
+                coordSteps.append((step.id, None))
             else:
                 coordSteps.append(coordStep)
             step = step.parent()  # On the next iteration look at the parent of the selected step.
@@ -70,7 +70,7 @@ class MyTreeView(QTreeView):
         return self._currentCoordRange
 
     def _currentChanged(self, current: QModelIndex, previous: QModelIndex):
-        if current.internalPointer() is not None: # In some cases we may change to index to something blank that has not pointer
+        if current.internalPointer() is not None:  # In some cases we may change to index to something blank that has not pointer
             self.currentItemChanged.emit(current.internalPointer())
 
 

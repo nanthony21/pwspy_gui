@@ -11,7 +11,7 @@ import os
 from ._ui.widget import SequenceViewer
 from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
 from pwspy.utility.acquisition.steps import SequencerStep
-from pwspy.utility.acquisition import loadDirectory, RuntimeSequenceSettings
+from pwspy.utility.acquisition import RuntimeSequenceSettings
 from pwspy.dataTypes import AcqDir
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
@@ -79,7 +79,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
                     pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
             foundAcqs = [acq for acq in foundAcqs if acq.sequencerCoordinate.uuid == sequenceRoot.uuid]  # Filter out acquisitions that don't have a matching UUID to the sequence file.
             logger.debug(f"Successfully loaded {len(foundAcqs)} sequenced acquisitions.")
-            self._cells = [acq for acq in foundAcqs if acq.filePath in cellFilePaths]
+            self._cells = [acq for acq in foundAcqs if acq.acquisition.filePath in cellFilePaths]
             self._sequence = sequenceRoot.rootStep
             self._ui.setSequenceStepRoot(self._sequence)
             return
@@ -123,7 +123,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         select: typing.List[AcqDir] = []
         for cell in self._cells:
             if cell.sequencerCoordinate in coordRange:
-                select.append(cell)
+                select.append(cell.acquisition)
         self._selector.setSelectedCells(select)
 
 

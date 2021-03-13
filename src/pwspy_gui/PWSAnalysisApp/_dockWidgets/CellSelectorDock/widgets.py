@@ -34,6 +34,7 @@ if t_.TYPE_CHECKING:
     from pwspy.analysis.pws import PWSAnalysisResults
     from pwspy.analysis.dynamics import DynamicsAnalysisResults
 
+
 def evalToolTip(cls: t_.Type[QWidget], method):
     """Given a QWidget and a function that returns a string, this decorator returns a modified class that will evaluate
     the function each time the tooltip is requested."""
