@@ -52,7 +52,7 @@ class CellSelectorPluginSupport:
             try:
                 plugin.onCellsSelected(cells)
             except Exception as e:
-                logging.getLogger(__name__).error(e)
+                logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self._selector, "Plugin error", f"Error in `onCellsSelected` of plugin: {plugin.getName()}. See log.")
 
     def notifyReferenceSelectionChanged(self, cell: pwsdt.AcqDir):
@@ -60,7 +60,7 @@ class CellSelectorPluginSupport:
             try:
                 plugin.onReferenceSelected(cell)
             except Exception as e:
-                logging.getLogger(__name__).error(e)
+                logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self._selector, "Plugin error", f"Error in `onReferenceSelected` of plugin: {plugin.getName()}. See log.")
 
     def notifyNewCellsLoaded(self, cells: List[pwsdt.AcqDir]):
@@ -68,7 +68,7 @@ class CellSelectorPluginSupport:
             try:
                 plugin.onNewCellsLoaded(cells)
             except Exception as e:
-                logging.getLogger(__name__).error(e)
+                logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self._selector, "Plugin error", f"Error in `onNewCellsLoaded` of plugin: {plugin.getName()}. See log.")
 
 
