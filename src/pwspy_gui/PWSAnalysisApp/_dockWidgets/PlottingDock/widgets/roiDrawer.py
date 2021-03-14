@@ -17,8 +17,7 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple, Optional
-
+import typing as t_
 import numpy as np
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QWidget, QGridLayout, QButtonGroup, QPushButton, QDialog, QSpinBox, QLabel, \
@@ -30,13 +29,34 @@ from pwspy.dataTypes import AcqDir
 import os
 from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.analysisViewer import AnalysisViewer
 from mpl_qt_viz.roiSelection import FullImPaintCreator, AdjustableSelector, LassoCreator, EllipseCreator, RegionalPaintCreator, PolygonModifier, WaterShedPaintCreator
+if t_.TYPE_CHECKING:
+    from pwspy.analysis.pws import PWSAnalysisResults
+    from pwspy.analysis.dynamics import DynamicsAnalysisResults
+
+AnalysisResultsComboType = t_.Union[ConglomerateAnalysisResults,  # Internally we will use the ConglomerateAnalysisResults but we accept a regular tuple as well.
+                                    t_.Tuple[
+                                        t_.Optional[PWSAnalysisResults],
+                                        t_.Optional[DynamicsAnalysisResults]
+                                    ]]
 
 
 class RoiDrawer(QWidget):
-    def __init__(self, metadatas: List[Tuple[AcqDir, Optional[ConglomerateAnalysisResults]]], parent=None):
+    def __init__(self, metadatas: t_.List[t_.Tuple[AcqDir, t_.Optional[AnalysisResultsComboType]]], parent=None):
         QWidget.__init__(self, parent=parent, flags=QtCore.Qt.Window)
         self.setWindowTitle("Roi Drawer 3000")
-        self.metadatas = metadatas
+        self.metadatas = []
+
+        # Parse the inputs
+        for acq, analyses in metadatas:
+            if isinstance(analyses, ConglomerateAnalysisResults) or analyses is None:
+                pass  # These are already acceptable inputs, no conversion needed
+            elif type(analyses) is tuple:  # We allow a standard tuple rather than ConglomerateAnalysisResults since that is an internal class.
+                assert len(analyses) == 2
+                analyses = ConglomerateAnalysisResults(*analyses)
+            else:
+                raise TypeError(f"The second item of an item of `metadatas` may not be of type: {type(analyses)}")
+            self.metadatas.append((acq, analyses))
+
 
         layout = QGridLayout()
 
