@@ -244,9 +244,13 @@ class CellTableWidget(QTableWidget):
         _ = {i.row: i for i in self._cellItems} #Cell items keyed by their current row position.
         return [_[i] for i in rowIndices]
 
-    def refreshCellItems(self):
+    def refreshCellItems(self, cells: t_.List[AcqDir] = None):
+        """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
+        if cells is None:
+            cells = []
         for i in self._cellItems:
-            i.refresh()
+            if i.acqDir in cells:
+                i.refresh()
 
     def addCellItems(self, items: t_.List[CellTableWidgetItem]) -> None:
         row = len(self._cellItems)

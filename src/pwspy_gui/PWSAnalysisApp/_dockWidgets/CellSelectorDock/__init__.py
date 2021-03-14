@@ -234,5 +234,6 @@ class CellSelectorDock(CellSelector, QDockWidget):
             else:
                 refitem.setHighlighted(False)
 
-    def refreshCellItems(self):
-        self._tableWidget.refreshCellItems()
+    def refreshCellItems(self, cells: List[pwsdt.AcqDir] = None):
+        """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
+        self._tableWidget.refreshCellItems(cells=cells)

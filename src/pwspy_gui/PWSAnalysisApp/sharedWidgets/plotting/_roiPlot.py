@@ -22,6 +22,7 @@ import typing
 from dataclasses import dataclass
 
 import matplotlib
+from PyQt5.QtCore import pyqtSignal
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.image import AxesImage
@@ -48,6 +49,8 @@ class RoiParams:
 
 class RoiPlot(QWidget):
     """Adds handling for ROIs to the BigPlot class."""
+    roiDeleted = pyqtSignal(AcqDir, Roi)
+
     def __init__(self, acqDir: AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
             super().__init__(parent, flags=flags)
@@ -94,7 +97,7 @@ class RoiPlot(QWidget):
         currentSel = self.roiFilter.currentText()
         # updateFilter
         try:
-            self.roiFilter.currentIndexChanged.disconnect() # Without this line the roiFilter.clear() line is very slow.
+            self.roiFilter.currentIndexChanged.disconnect()  # Without this line the roiFilter.clear() line is very slow.
         except:
             pass #if the signal hasn't yet been connected we'll get an error. ignore it.
         self.roiFilter.clear()
@@ -163,6 +166,7 @@ class RoiPlot(QWidget):
                 for param in self.rois:
                     if param.selected:
                         param.roi.deleteRoi(os.path.split(param.roi.filePath)[0], param.roi.name, param.roi.number)
+                        self.roiDeleted.emit(self.metadata, param.roi)
                 self.showRois()
 
             def moveFunc():

@@ -1,17 +1,38 @@
+# Copyright © 2018-2020 Nick Anthony, Backman Biophotonics Lab, Northwestern University
+#
+# This file is part of PWSpy.
+#
+# PWSpy is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PWSpy is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
+
+"""
+
+@author: Nick Anthony
+"""
 import typing
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QModelIndex
-from pwspy.utility.acquisition._treeModel.item import TreeItem
+from pwspy.utility.acquisition import SequencerStep
 
 
 class TreeModel(QtCore.QAbstractItemModel):
-    def __init__(self, root: TreeItem, parent=None):
+    def __init__(self, root: SequencerStep, parent=None):
         super(TreeModel, self).__init__(parent)
-        self._rootItem = TreeItem()  # This will be invisible but will determine the header labels.
+        self._rootItem = SequencerStep(None, None, None)  # This will be invisible but will determine the header labels.
         self._rootItem.addChild(root)
 
-    def invisibleRootItem(self) -> TreeItem:
+    def invisibleRootItem(self) -> SequencerStep:
         return self._rootItem
 
     def columnCount(self, parent: QModelIndex) -> int:
@@ -20,9 +41,9 @@ class TreeModel(QtCore.QAbstractItemModel):
     def data(self, index: QModelIndex, role: int):
         if not index.isValid():
             return None
-        if role != QtCore.Qt.DisplayRole:  # We only support this role type. Return the treeItem itself as the data.
+        if role != QtCore.Qt.DisplayRole:  # We only support this role type. Return the SequencerStep itself as the data.
             return None
-        item: TreeItem = index.internalPointer()
+        item: SequencerStep = index.internalPointer()
         return item
 
     def flags(self, index):

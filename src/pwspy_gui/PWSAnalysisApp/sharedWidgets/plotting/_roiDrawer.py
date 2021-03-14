@@ -21,11 +21,11 @@ import typing as t_
 import numpy as np
 import pwspy.dataTypes as pwsdt
 from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtWidgets import QWidget, QGridLayout, QButtonGroup, QPushButton, QDialog, QSpinBox, QLabel, \
     QMessageBox, QMenu, QAction, QApplication
 
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
-from pwspy.dataTypes import AcqDir
 import os
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._analysisViewer import AnalysisViewer
 from mpl_qt_viz.roiSelection import FullImPaintCreator, AdjustableSelector, LassoCreator, EllipseCreator, RegionalPaintCreator, PolygonModifier, WaterShedPaintCreator
@@ -41,7 +41,10 @@ if t_.TYPE_CHECKING:
 
 
 class RoiDrawer(QWidget):
-    def __init__(self, metadatas: t_.List[t_.Tuple[AcqDir, t_.Optional[AnalysisResultsComboType]]], parent=None):
+    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # Fired when a roi is created
+    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
+
+    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisResultsComboType]]], parent=None):
         QWidget.__init__(self, parent=parent, flags=QtCore.Qt.Window)
         self.setWindowTitle("Roi Drawer 3000")
         self.metadatas = []
@@ -57,12 +60,14 @@ class RoiDrawer(QWidget):
                 raise TypeError(f"The second item of an item of `metadatas` may not be of type: {type(analyses)}")
             self.metadatas.append((acq, analyses))
 
-
         layout = QGridLayout()
 
         self.mdIndex = 0
         self.anViewer = AnalysisViewer(metadatas[self.mdIndex][0], metadatas[self.mdIndex][1], 'title')
-        self.saver = RoiSaverController(self.anViewer)
+        self.anViewer.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
+
+        self.saver = RoiSaverController(parent=self)
+        self.saver.roiCreated.connect(self._handleRoiSaving)
 
         self.newRoiDlg = NewRoiDlg(self)
 
@@ -175,6 +180,14 @@ class RoiDrawer(QWidget):
             self.adjustButton.setEnabled(False)
         self.lastButton_ = button
 
+    def _handleRoiSaving(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, overwrite: bool):
+        if overwrite:
+            self.anViewer.showRois()  # Refresh all rois since we just deleted one as well.
+        else:
+            self.anViewer.addRoi(roi)
+        self.anViewer.canvas.draw_idle()
+        self.roiCreated.emit(acq, roi, overwrite)
+
     def _updateDisplayedCell(self):
         currRoi = self.anViewer.roiFilter.currentText() #Since the next cell we look at will likely not have rois of the current name we want to manually force the ROI name to stay the same.
         md, analysis = self.metadatas[self.mdIndex]
@@ -228,7 +241,7 @@ class NewRoiDlg(QDialog):
         super().show()
 
 
-class RoiSaverController:
+class RoiSaverController(QObject):
     """
     This class used to pass information to a separate process and thread to try to make saving ROIs less disruptive to the UI. It didn't really work.
     Rois are now much faster to save anyway so this file has been greatly simplified.
@@ -236,29 +249,20 @@ class RoiSaverController:
     Args:
         anViewer: A reference to an analysis viewer widget that we draw ROI's on.
     """
+    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # when a new roi is created, includes overwrites. (The acquisition, the ROI object, whether this was an overwrite)
 
-    def __init__(self, anViewer: AnalysisViewer):
-        self.anViewer = anViewer
-
-    def saveNewRoi(self, name: str, num: int, verts, datashape, acq: AcqDir):
+    def saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
         roi = pwsdt.Roi.fromVerts(name, num, verts, datashape)
         try:
             acq.saveRoi(roi)
-            self.anViewer.addRoi(roi)
-            self._roiIsSaved()
+            self.roiCreated.emit(acq, roi, False)
         except OSError:
             self._overWriteRoi(acq, roi)
-        self.anViewer.canvas.draw_idle()
 
-    def _overWriteRoi(self, acq: AcqDir, roi: pwsdt.Roi):
+    def _overWriteRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi):
         """If the worker raised an `OSError` then we need to ask the user if they want to overwrite."""
         ans = QMessageBox.question(self.anViewer, 'Overwrite?',
                                    f"Roi {roi.name}:{roi.number} already exists. Overwrite?")
         if ans == QMessageBox.Yes:
             acq.saveRoi(roi, overwrite=True)
-            self.anViewer.showRois()  # Refresh all rois since we just deleted one as well.
-            self._roiIsSaved()
-
-    def _roiIsSaved(self):
-        """Either way, once a  new roi has been saved we want to do this."""
-        QApplication.instance().window.cellSelector.refreshCellItems()  # Refresh the cell selection table.
+            self.roiCreated.emit(acq, roi, True)
