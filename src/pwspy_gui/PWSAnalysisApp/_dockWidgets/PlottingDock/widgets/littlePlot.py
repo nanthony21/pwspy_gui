@@ -18,14 +18,14 @@
 import os
 
 import numpy as np
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore
 from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QMenu, QAction, QWidget, QLabel, QVBoxLayout
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 from pwspy.dataTypes import AcqDir, ImCube
-from .widgets import AnalysisPlotter
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.analysisViewer import AnalysisViewer
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._widgets import AnalysisPlotter
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._analysisViewer import AnalysisViewer
 from mpl_qt_viz.visualizers import PlotNd
 
 

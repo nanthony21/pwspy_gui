@@ -19,25 +19,25 @@ from __future__ import annotations
 
 import typing as t_
 import numpy as np
+import pwspy.dataTypes as pwsdt
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QWidget, QGridLayout, QButtonGroup, QPushButton, QDialog, QSpinBox, QLabel, \
-    QMessageBox, QMenu, QAction
+    QMessageBox, QMenu, QAction, QApplication
 
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.roiDrawerProcess import RoiSaverController
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 from pwspy.dataTypes import AcqDir
 import os
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.analysisViewer import AnalysisViewer
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._analysisViewer import AnalysisViewer
 from mpl_qt_viz.roiSelection import FullImPaintCreator, AdjustableSelector, LassoCreator, EllipseCreator, RegionalPaintCreator, PolygonModifier, WaterShedPaintCreator
 if t_.TYPE_CHECKING:
     from pwspy.analysis.pws import PWSAnalysisResults
     from pwspy.analysis.dynamics import DynamicsAnalysisResults
 
-AnalysisResultsComboType = t_.Union[ConglomerateAnalysisResults,  # Internally we will use the ConglomerateAnalysisResults but we accept a regular tuple as well.
-                                    t_.Tuple[
-                                        t_.Optional[PWSAnalysisResults],
-                                        t_.Optional[DynamicsAnalysisResults]
-                                    ]]
+    AnalysisResultsComboType = t_.Union[ConglomerateAnalysisResults,  # Internally we will use the ConglomerateAnalysisResults but we accept a regular tuple as well.
+                                        t_.Tuple[
+                                            t_.Optional[PWSAnalysisResults],
+                                            t_.Optional[DynamicsAnalysisResults]
+                                        ]]
 
 
 class RoiDrawer(QWidget):
@@ -228,3 +228,37 @@ class NewRoiDlg(QDialog):
         super().show()
 
 
+class RoiSaverController:
+    """
+    This class used to pass information to a separate process and thread to try to make saving ROIs less disruptive to the UI. It didn't really work.
+    Rois are now much faster to save anyway so this file has been greatly simplified.
+
+    Args:
+        anViewer: A reference to an analysis viewer widget that we draw ROI's on.
+    """
+
+    def __init__(self, anViewer: AnalysisViewer):
+        self.anViewer = anViewer
+
+    def saveNewRoi(self, name: str, num: int, verts, datashape, acq: AcqDir):
+        roi = pwsdt.Roi.fromVerts(name, num, verts, datashape)
+        try:
+            acq.saveRoi(roi)
+            self.anViewer.addRoi(roi)
+            self._roiIsSaved()
+        except OSError:
+            self._overWriteRoi(acq, roi)
+        self.anViewer.canvas.draw_idle()
+
+    def _overWriteRoi(self, acq: AcqDir, roi: pwsdt.Roi):
+        """If the worker raised an `OSError` then we need to ask the user if they want to overwrite."""
+        ans = QMessageBox.question(self.anViewer, 'Overwrite?',
+                                   f"Roi {roi.name}:{roi.number} already exists. Overwrite?")
+        if ans == QMessageBox.Yes:
+            acq.saveRoi(roi, overwrite=True)
+            self.anViewer.showRois()  # Refresh all rois since we just deleted one as well.
+            self._roiIsSaved()
+
+    def _roiIsSaved(self):
+        """Either way, once a  new roi has been saved we want to do this."""
+        QApplication.instance().window.cellSelector.refreshCellItems()  # Refresh the cell selection table.

@@ -16,14 +16,13 @@
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
 
 from __future__ import annotations
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget, QGridLayout, QComboBox
+from PyQt5.QtWidgets import QComboBox
 from typing import Optional
 
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.widgets import AnalysisPlotter
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.roiPlot import RoiPlot
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._widgets import AnalysisPlotter
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._roiPlot import RoiPlot
 
 
 class AnalysisViewer(AnalysisPlotter, RoiPlot):

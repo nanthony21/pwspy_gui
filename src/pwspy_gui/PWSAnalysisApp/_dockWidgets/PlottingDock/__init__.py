@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QScrollArea, QVBo
     QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame
 
 import pwspy.dataTypes as pwsdt
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.roiDrawer import RoiDrawer
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
 from pwspy_gui.sharedWidgets.utilityWidgets import AspectRatioWidget
 from .widgets.littlePlot import LittlePlot
 from ...componentInterfaces import CellSelector
