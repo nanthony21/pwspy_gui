@@ -41,11 +41,17 @@ if t_.TYPE_CHECKING:
 
 
 class RoiDrawer(QWidget):
+    """
+    A widget for interactively drawing ROIs. Defaults to showing as it's own window, this can be overridden with the `flags` argument.
+
+    Args:
+        metadatas: A list of pwspy AcquisitionDirectory `AcqDir` objects paired with optional analysis results objects for that acquisition.
+    """
     roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # Fired when a roi is created
     roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
 
-    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisResultsComboType]]], parent=None):
-        QWidget.__init__(self, parent=parent, flags=QtCore.Qt.Window)
+    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window):
+        QWidget.__init__(self, parent=parent, flags=flags)
         self.setWindowTitle("Roi Drawer 3000")
         self.metadatas = []
 
@@ -59,11 +65,12 @@ class RoiDrawer(QWidget):
             else:
                 raise TypeError(f"The second item of an item of `metadatas` may not be of type: {type(analyses)}")
             self.metadatas.append((acq, analyses))
+        del metadatas  # This is to make sure we use self.metadatas rather than the non-converted version
 
         layout = QGridLayout()
 
-        self.mdIndex = 0
-        self.anViewer = AnalysisViewer(metadatas[self.mdIndex][0], metadatas[self.mdIndex][1], 'title')
+        self._mdIndex = 0
+        self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], 'title')
         self.anViewer.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
 
         self.saver = RoiSaverController(parent=self)
@@ -100,16 +107,16 @@ class RoiDrawer(QWidget):
         self.adjustButton.toggled.connect(handleAdjustButton)
 
         def showNextCell():
-            self.mdIndex += 1
-            if self.mdIndex >= len(self.metadatas):
-                self.mdIndex = 0
-            self._updateDisplayedCell()
+            idx = self._mdIndex + 1
+            if idx >= len(self.metadatas):
+                idx = 0
+            self._updateDisplayedCell(idx)
 
         def showPreviousCell():
-            self.mdIndex -= 1
-            if self.mdIndex < 0:
-                self.mdIndex = len(self.metadatas) - 1
-            self._updateDisplayedCell()
+            idx = self._mdIndex - 1
+            if idx < 0:
+                idx = len(self.metadatas) - 1
+            self._updateDisplayedCell(idx)
 
         self.previousButton = QPushButton('←')
         self.nextButton = QPushButton('→')
@@ -139,7 +146,7 @@ class RoiDrawer(QWidget):
         self.newRoiDlg.show()
         self.newRoiDlg.exec()
         if self.newRoiDlg.result() == QDialog.Accepted:
-            md = self.metadatas[self.mdIndex][0]
+            md = self.metadatas[self._mdIndex][0]
             self.saver.saveNewRoi(roiName, self.newRoiDlg.number, np.array(verts), shape, md)
         self.selector.setActive(True)  # Start the next roi.
 
@@ -188,13 +195,27 @@ class RoiDrawer(QWidget):
         self.anViewer.canvas.draw_idle()
         self.roiCreated.emit(acq, roi, overwrite)
 
-    def _updateDisplayedCell(self):
+    def _updateDisplayedCell(self, idx: int):
         currRoi = self.anViewer.roiFilter.currentText() #Since the next cell we look at will likely not have rois of the current name we want to manually force the ROI name to stay the same.
-        md, analysis = self.metadatas[self.mdIndex]
+        md, analysis = self.metadatas[idx]
         self.anViewer.setMetadata(md, analysis=analysis)
         self.anViewer.roiFilter.setEditText(currRoi) #manually force the ROI name to stay the same.
         self.selector.reset() #Make sure to get rid of all rois
         self.setWindowTitle(f"Roi Drawer - {os.path.split(md.filePath)[-1]}")
+        self._mdIndex = idx
+
+    def setDisplayedAcquisition(self, acq: pwsdt.AcqDir):
+        """Switch the image to display images associated with `acq`. If `acq` wasn't passed in to the constructor of this object then
+        an IndexError will be raised.
+
+        Args:
+            acq: The acquisition to display.
+        """
+        for i, (mdAcq, analysis) in enumerate(self.metadatas):
+            if mdAcq is acq:
+                self._updateDisplayedCell(i)
+                return
+        raise IndexError(f"Acquisition {acq} was not found in the list of available images.")
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.selector.setActive(False) #This cleans up remaining resources of the selector widgets.
