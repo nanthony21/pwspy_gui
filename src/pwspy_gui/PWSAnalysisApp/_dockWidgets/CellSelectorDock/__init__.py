@@ -101,6 +101,7 @@ class CellSelectorDock(CellSelector, QDockWidget):
         menu.exec(self._pluginsButton.mapToGlobal(QPoint(0, self._pluginsButton.height())))
 
     def _addCells(self, acquisitions: List[pwsdt.AcqDir], workingDir: str):
+        workingDir = str(workingDir)  # This prevents problems if we pass a Path from pathlib instead.
         cellItems = []
         for acq in acquisitions:
             addedWidgets = []

@@ -38,6 +38,7 @@ from . import resources
 from pwspy_gui.sharedWidgets.extraReflectionManager import ERManager
 from typing import List
 import typing
+import pwspy.dataTypes as pwsdt
 
 
 class PWSApp(QApplication):  # TODO add a scriptable interface to load files, open roi window, run analysis etc.
@@ -71,6 +72,7 @@ class PWSApp(QApplication):  # TODO add a scriptable interface to load files, op
         self.window.roiConvertAction.triggered.connect(self.convertRois)
         self.workingDirectory = None
 
+    ### API
     def changeDirectory(self, directory: str, recursive: bool):
         from glob import glob
         pattern = [os.path.join('**', 'Cell[0-9]*')] if recursive else ['Cell[0-9]*']
@@ -112,3 +114,18 @@ class PWSApp(QApplication):  # TODO add a scriptable interface to load files, op
             return
         rc = RoiConverter(metas)
         self.window.cellSelector.refreshCellItems()
+
+    def setSelectedCells(self, acqs: typing.Sequence[pwsdt.AcqDir]):
+        self.window.cellSelector.setSelectedCells(acqs)
+
+    def getSelectedCells(self) -> typing.Sequence[pwsdt.AcqDir]:
+        self.window.cellSelector.getSelectedCellMetas()
+
+    def getLoadedCells(self) -> typing.Sequence[pwsdt.AcqDir]:
+        self.window.cellSelector.getAllCellMetas()
+
+    def plotSelectedCells(self, analysisName: str = None):
+        if analysisName is None:
+            analysisName = ''
+        self.window.plots.setAnalysisName(analysisName)
+        self.window.plots.refreshPlots()

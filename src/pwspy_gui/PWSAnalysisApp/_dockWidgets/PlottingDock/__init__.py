@@ -101,12 +101,8 @@ class PlottingDock(QDockWidget):
 
         self._enableAnalysisPlottingButtons('false')
 
-    def addPlot(self, plot: QWidget):
-        self._plots.append(plot)
-        self._scrollContents.layout().addWidget(plot)
-        self._plotsChanged()
 
-    def addPlots(self, plots: List[QWidget]):
+    def _addPlots(self, plots: List[QWidget]):
         self._plots.extend(plots)
         [self._scrollContents.layout().addWidget(plot) for plot in plots]
         self._plotsChanged()
@@ -191,7 +187,7 @@ class PlottingDock(QDockWidget):
                     else:
                         plotsToAdd.append(LittlePlot(cell, analysis, f"{analysisName} {os.path.split(cell.filePath)[-1]}"))
                         buttonState = 'true'  # Enable all buttons if there were some valid analysis.
-            self.addPlots(plotsToAdd)
+            self._addPlots(plotsToAdd)
             self._enableAnalysisPlottingButtons(buttonState)
         except Exception as e:
             logger = logging.getLogger(__name__)
@@ -211,3 +207,9 @@ class PlottingDock(QDockWidget):
                 except ValueError:  # The analysis field wasn't found
                     plot.changeData(plot.PlotFields.Thumbnail)
             self._lastButton = button
+
+    def setAnalysisName(self, name: str):
+        self._anNameEdit.setText(name)
+
+    def refreshPlots(self):
+        self._generatePlots(self.selector.getSelectedCellMetas())
