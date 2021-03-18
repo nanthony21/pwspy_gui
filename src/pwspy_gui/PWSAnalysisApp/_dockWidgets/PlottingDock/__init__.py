@@ -114,7 +114,11 @@ class PlottingDock(QDockWidget):
     def _startRoiDrawing(self):
         metadatas = [(p.acq, p.analysis) for p in self._plots]
         if len(metadatas) > 0: # Otherwise we crash
-            self.roiDrawer = RoiDrawer(metadatas, self)
+            try:
+                self.roiDrawer = RoiDrawer(metadatas, self)
+            except Exception as e:
+                logging.getLogger(__name__).exception(e)
+                QMessageBox.information(self, "Error", "An error occured. Please see the log file.")
         else:
             QMessageBox.information(self, "Oops", "Please select which cells to plot.")
 

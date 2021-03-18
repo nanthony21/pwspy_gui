@@ -119,10 +119,10 @@ class PWSApp(QApplication):  # TODO add a scriptable interface to load files, op
         self.window.cellSelector.setSelectedCells(acqs)
 
     def getSelectedCells(self) -> typing.Sequence[pwsdt.AcqDir]:
-        self.window.cellSelector.getSelectedCellMetas()
+        return self.window.cellSelector.getSelectedCellMetas()
 
     def getLoadedCells(self) -> typing.Sequence[pwsdt.AcqDir]:
-        self.window.cellSelector.getAllCellMetas()
+        return self.window.cellSelector.getAllCellMetas()
 
     def plotSelectedCells(self, analysisName: str = None):
         if analysisName is None:

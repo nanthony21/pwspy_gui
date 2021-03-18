@@ -85,7 +85,6 @@ class RoiPlot(QWidget):
         self._toggleCids = None
         self.enableHoverAnnotation(True)
 
-
     def setRoiPlotMetadata(self, metadata: AcqDir):
         """Refresh the ROIs based on a new metadata. Also needs to be provided with the data for the image to display."""
         self.metadata = metadata
