@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QTimer
+from PyQt5.QtGui import QPalette, QColor
 from pwspy.utility.acquisition.steps import PositionsStep, TimeStep
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
-from PyQt5.QtWidgets import QWidget, QButtonGroup, QPushButton, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QButtonGroup, QPushButton, QHBoxLayout, QVBoxLayout, QCheckBox, QLabel, QFrame
 import typing as t_
 import pwspy.dataTypes as pwsdt
 import numpy as np
@@ -26,9 +27,10 @@ class SeqRoiDrawer(QWidget):
         self._controller = controller
 
         self._drawer = RoiDrawer(metadatas=[(seqAcq.acquisition, anResults) for seqAcq, anResults in metadatas], parent=self, flags=QtCore.Qt.Widget)  # Override the default behavior of showing as it's own window.
+        self._optionsPanel = OptionsPanel(parent=self)
+        self._optionsPanel.animateTimerFired.connect(self._handleAnimationEvent)
 
-        l = QVBoxLayout(self)
-        l.addWidget(self._drawer)
+        l = QVBoxLayout()
 
         if controller.getPositionNames() is not None:
             self._positionsBar = ButtonBar(controller.getPositionNames(), self)
@@ -44,14 +46,27 @@ class SeqRoiDrawer(QWidget):
         else:
             self._timesBar = None
 
+        ll = QHBoxLayout()
+        ll.addWidget(self._drawer, stretch=1)  # Hog as much space as possible.
+        ll.addWidget(self._optionsPanel)
+
+        lll = QVBoxLayout(self)
+        lll.addLayout(ll, stretch=1)
+        lll.addLayout(l)
+        self.setLayout(lll)
+
         self._buttonBars = (self._positionsBar, self._timesBar)
-        self.setLayout(l)
 
     def setAcquisition(self):
         posIndex = self._positionsBar.getSelectedButtonId() if self._positionsBar is not None else None
         timeIndex = self._timesBar.getSelectedButtonId() if self._timesBar is not None else None
         acq = self._controller.getAcquisition(posIndex, timeIndex)
         self._drawer.setDisplayedAcquisition(acq.acquisition)
+
+    def _handleAnimationEvent(self):
+        if self._timesBar is None:
+            return
+        self._timesBar.selectNextButton()
 
 
 class ButtonBar(QWidget):
@@ -77,6 +92,58 @@ class ButtonBar(QWidget):
 
     def getSelectedButtonId(self):
         return self._selectedButtonId
+
+    def selectNextButton(self):
+        id = self._selectedButtonId + 1
+        if id >= len(self._bGroup.buttons()):
+            id = 0
+        btn = self._bGroup.button(id)
+        btn.click()
+
+
+class OptionsPanel(QFrame):
+    animateTimerFired = pyqtSignal()
+
+    class Options(t_.NamedTuple):
+        copyAlongTime: bool
+        trackMovement: bool
+
+    def __init__(self, parent: QWidget = None):
+        super().__init__(parent=parent)
+        self._copyTimeCB = QCheckBox("Copy ROI changes along Time axis", parent=self)
+        self._trackImCB = QCheckBox("Track cell movement", parent=self)
+        self._animateBtn = QPushButton("Animate Time axis", parent=self)
+        self._animateBtn.setCheckable(True)
+
+        self._animateBtn.toggled.connect(self._handleAnimateCheck)
+        self._animateTimer = QTimer(self)
+        self._animateTimer.setInterval(100)
+        self._animateTimer.setSingleShot(False)
+        self._animateTimer.timeout.connect(self.animateTimerFired.emit)
+
+        l = QVBoxLayout()
+        label = QLabel("Options:")
+        f = label.font()
+        f.setBold(True)
+        label.setFont(f)
+        l.addWidget(label)
+        l.addWidget(self._copyTimeCB)
+        l.addWidget(self._trackImCB)
+        l.addWidget(self._animateBtn)
+        l.addWidget(QWidget(self), stretch=1)  # This pushes everything up to the top.
+        self.setLayout(l)
+        self.setFrameStyle(QFrame.Box)
+
+    def _handleAnimateCheck(self, checked: bool):
+        if checked:
+            self._animateTimer.start()
+        else:
+            self._animateTimer.stop()
+
+    def getOptions(self) -> Options:
+        return OptionsPanel.Options(
+            copyAlongTime=self._copyTimeCB.isChecked(),
+            trackMovement=self._trackImCB.isChecked())
 
 
 class SequenceController:
@@ -123,7 +190,8 @@ if __name__ == '__main__':
     from pwspy.utility.acquisition import loadDirectory
     from PyQt5.QtWidgets import QApplication
     import sys
-    d = r'\\BackmanLabNAS\home\Year3\KuriosBandwidth\data'
+    # d = r'\\BackmanLabNAS\home\Year3\KuriosBandwidth\data' # Positions only experiment
+    d = r'\\BackmanLabNAS\Public\surbhi_nick_share\MCF10A D-Ala media auto' # Time series
     sequence, acqs = loadDirectory(d)
     cont = SequenceController(sequence, acqs)
 
