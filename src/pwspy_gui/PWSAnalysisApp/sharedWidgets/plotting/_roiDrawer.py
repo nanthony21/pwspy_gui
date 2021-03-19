@@ -50,22 +50,10 @@ class RoiDrawer(QWidget):
     roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # Fired when a roi is created
     roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
 
-    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window):
+    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window):
         QWidget.__init__(self, parent=parent, flags=flags)
         self.setWindowTitle("Roi Drawer 3000")
-        self.metadatas = []
-
-        # Parse the inputs
-        for acq, analyses in metadatas:
-            if isinstance(analyses, ConglomerateAnalysisResults) or analyses is None:
-                pass  # These are already acceptable inputs, no conversion needed
-            elif type(analyses) is tuple:  # We allow a standard tuple rather than ConglomerateAnalysisResults since that is an internal class.
-                assert len(analyses) == 2
-                analyses = ConglomerateAnalysisResults(*analyses)
-            else:
-                raise TypeError(f"The second item of an item of `metadatas` may not be of type: {type(analyses)}")
-            self.metadatas.append((acq, analyses))
-        del metadatas  # This is to make sure we use self.metadatas rather than the non-converted version
+        self.metadatas = metadatas
 
         layout = QGridLayout()
 

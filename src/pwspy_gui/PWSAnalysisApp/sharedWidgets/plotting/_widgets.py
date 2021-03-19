@@ -14,13 +14,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
-
-from typing import Optional
+from __future__ import annotations
 import numpy as np
-
+import typing as t_
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 from pwspy.dataTypes import AcqDir, FluorescenceImage
 from enum import Enum
+from pwspy.analysis.pws import PWSAnalysisResults
+from pwspy.analysis.dynamics import DynamicsAnalysisResults
 
 
 class _AnalysisTypes(Enum):
@@ -68,42 +69,65 @@ class AnalysisPlotter:
     PlotFields = _PlotFields
     _fluorescencePlotFields = _FluorescencePlotFields
 
-    def __init__(self, acq: AcqDir, analysis: ConglomerateAnalysisResults = None):
-        self.analysisField: AnalysisPlotter.PlotFields = None
-        self.analysis: ConglomerateAnalysisResults = analysis
-        self.acq: AcqDir = acq
-        self.data: np.ndarray = None
+    AnalysisResultsComboType = t_.Union[
+        ConglomerateAnalysisResults,  # Internally we will use the ConglomerateAnalysisResults but we accept a regular tuple as well.
+        t_.Tuple[
+            t_.Optional[PWSAnalysisResults],
+            t_.Optional[DynamicsAnalysisResults]
+        ]]
+
+    def __init__(self, acq: AcqDir, analysis: AnalysisResultsComboType = None, initialField=PlotFields.Thumbnail):
+        self._analysisField: AnalysisPlotter.PlotFields = initialField
+        self._analysis: ConglomerateAnalysisResults = ConglomerateAnalysisResults(*analysis)
+        self._acq: AcqDir = acq
+        self._data: np.ndarray = None
+
+    @property
+    def analysis(self) -> ConglomerateAnalysisResults:
+        return self._analysis
+
+    @property
+    def acq(self) -> AcqDir:
+        return self._acq
+
+    @property
+    def data(self) -> np.ndarray:
+        return self._data
+
+    @property
+    def analysisField(self) -> AnalysisPlotter.PlotFields:
+        return self._analysisField
 
     def changeData(self, field: _PlotFields):
         assert isinstance(field, AnalysisPlotter.PlotFields)
-        self.analysisField = field
+        self._analysisField = field
         if field is _PlotFields.Thumbnail:  # Load the thumbnail from the ICMetadata object
-            self.data = self.acq.getThumbnail()
+            self._data = self._acq.getThumbnail()
         elif field in _FluorescencePlotFields:  # Open the fluorescence image.
             idx = _FluorescencePlotFields.index(field)  # Get the number for the fluorescence image that has been selected.
-            self.data = FluorescenceImage.fromMetadata(self.acq.fluorescence[idx]).data
+            self._data = FluorescenceImage.fromMetadata(self._acq.fluorescence[idx]).data
         else:
             anType, paramName = field.value
             if anType == _AnalysisTypes.PWS:
-                analysis = self.analysis.pws
+                analysis = self._analysis.pws
             elif anType == _AnalysisTypes.DYN:
-                analysis = self.analysis.dyn
+                analysis = self._analysis.dyn
             else:
                 raise TypeError("Unidentified analysis type")
             if analysis is None:
-                raise ValueError(f"Analysis Plotter for {self.acq.filePath} does not have an analysis file.")
+                raise ValueError(f"Analysis Plotter for {self._acq.filePath} does not have an analysis file.")
             if field is _PlotFields.OpdPeak:  # Return the index corresponding to the max of that pixel's opd funtion.
-                opd, opdIndex = self.analysis.pws.opd
-                self.data = opdIndex[np.argmax(opd, axis=2)]
+                opd, opdIndex = self._analysis.pws.opd
+                self._data = opdIndex[np.argmax(opd, axis=2)]
             elif field is _PlotFields.SingleWavelength:  # Return the image of the middle wavelength reflectance.
-                _ = self.analysis.pws.reflectance.data
-                self.data = _[:, :, _.shape[2]//2] # + self.analysis.pws.meanReflectance # It actually looks better without the meanReflectance added
+                _ = self._analysis.pws.reflectance.data
+                self._data = _[:, :, _.shape[2]//2] # + self.analysis.pws.meanReflectance # It actually looks better without the meanReflectance added
             else:
-                self.data = getattr(analysis, paramName)
-        assert len(self.data.shape) == 2
+                self._data = getattr(analysis, paramName)
+        assert len(self._data.shape) == 2
 
-    def setMetadata(self, md: AcqDir, analysis: Optional[ConglomerateAnalysisResults] = None):
-        self.analysis = analysis
-        self.acq = md
-        self.changeData(self.analysisField)
+    def setMetadata(self, md: AcqDir, analysis: t_.Optional[AnalysisResultsComboType] = None):
+        self._analysis = ConglomerateAnalysisResults(*analysis) if not isinstance(analysis, ConglomerateAnalysisResults) else analysis # In case this was a regular tuple, convert to our convenience class
+        self._acq = md
+        self.changeData(self._analysisField)
 
