@@ -57,7 +57,7 @@ class ROIManager(abc.ABC):
         CREATE = enum.auto()
 
     @abc.abstractmethod
-    def handleROIEvent(self, action: ROIManager.Actions, roi: pwsdt.Roi):
+    def handleROIEvent(self, action: ROIManager.Actions, acq: pwsdt.AcqDir, roi: pwsdt.Roi):
         pass
 
     @abc.abstractmethod
@@ -66,15 +66,13 @@ class ROIManager(abc.ABC):
 
 
 class _DefualtROIManager(ROIManager): # TODO LRU cache
-    def handleROIEvent(self, action: ROIManager.Actions, roi: pwsdt.Roi):
+    def handleROIEvent(self, action: ROIManager.Actions, acq: pwsdt.AcqDir, roi: pwsdt.Roi):
         if action == self.Actions.MODIFY:
-            pass
+            roi.toHDF(acq.filePath, overwrite=True)
         elif action == self.Actions.DELETE:
-            roi.
-            param.roi.deleteRoi(os.path.split(param.roi.filePath)[0], param.roi.name, param.roi.number)
-
+            roi.deleteRoi(os.path.split(roi.filePath)[0], roi.name, roi.number)
         elif action == self.Actions.CREATE:
-            pass
+            roi.toHDF(acq.filePath, overwrite=False)
 
     def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.Roi:
         return acq.loadRoi(roiName, roiNum)
@@ -200,7 +198,7 @@ class RoiPlot(QWidget):
             def deleteFunc():
                 for param in self.rois:
                     if param.selected:
-                        self._roiManager.handleROIEvent(self._roiManager.Actions.DELETE, param.roi)
+                        self._roiManager.handleROIEvent(self._roiManager.Actions.DELETE, self.metadata, param.roi)
                         self.roiDeleted.emit(self.metadata, param.roi)
                 self.showRois()
 
@@ -216,7 +214,7 @@ class RoiPlot(QWidget):
                     for param, verts in zip(selectedROIParams, vertsSet):
                         newRoi = Roi.fromVerts(param.roi.name, param.roi.number, np.array(verts),
                                                param.roi.mask.shape)
-                        newRoi.toHDF(self.metadata.filePath, overwrite=True)
+                        self._roiManager.handleROIEvent(self._roiManager.Actions.MODIFY, self.metadata, newRoi)
                     self._polyWidg.set_active(False)
                     self._polyWidg.set_visible(False)
                     self.showRois()
@@ -260,7 +258,7 @@ class RoiPlot(QWidget):
                     def done(verts, handles):
                         verts = verts[0]
                         newRoi = Roi.fromVerts(selectedROIParam.roi.name, selectedROIParam.roi.number, np.array(verts), selectedROIParam.roi.mask.shape)
-                        newRoi.toHDF(self.metadata.filePath, overwrite=True)
+                        self._roiManager.handleROIEvent(self._roiManager.Actions.MODIFY, self.metadata, newRoi)
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
                         self.enableHoverAnnotation(True)
