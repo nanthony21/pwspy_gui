@@ -20,8 +20,8 @@ if t_.TYPE_CHECKING:
 
 
 class SeqRoiDrawer(QWidget):
-    def __init__(self, controller: SequenceController, metadatas: t_.List[t_.Tuple[SeqAcqDir, t_.Optional[AnalysisResultsComboType]]], parent: QWidget = None):
-        super().__init__(parent=parent)
+    def __init__(self, controller: SequenceController, metadatas: t_.List[t_.Tuple[SeqAcqDir, t_.Optional[AnalysisResultsComboType]]], parent: QWidget = None, flags=QtCore.Qt.Window):
+        super().__init__(parent=parent, flags=flags)
         self.setWindowTitle("Sequence-Aware ROI Drawer")
         self._controller = controller
 

@@ -100,7 +100,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
 
     def _loadNewSequence(self, cells: typing.Sequence[pwsdt.AcqDir]) -> typing.Tuple[SequencerStep, typing.Sequence[SeqAcqDir]]:
         if len(cells) == 0:  # This causes a crash
-            return
+            return None, None
         cellFilePaths = [acq.filePath for acq in cells]
 
         #Search the parent directory for a `sequence.pwsseq` file containing the sequence information.

@@ -71,6 +71,12 @@ class CellSelectorPluginSupport:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self._selector, "Plugin error", f"Error in `onNewCellsLoaded` of plugin: {plugin.getName()}. See log.")
 
+    def notifyPluginSelected(self, plugin: CellSelectorPlugin):
+        try:
+            plugin.onPluginSelected()
+        except Exception as e:
+            logging.getLogger(__name__).exception(e)
+            QMessageBox.information(self._selector, "Plugin error", f"Error in `onPluginSelected` of plugin: {plugin.getName()}. See log.")
 
 class CellSelectorPlugin(metaclass=QABCMeta):
     """Base class for  a plugin that can extend the functionality of the `Cell Selector`.
