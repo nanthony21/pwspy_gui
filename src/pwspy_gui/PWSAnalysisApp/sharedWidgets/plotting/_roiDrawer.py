@@ -49,16 +49,18 @@ class RoiDrawer(QWidget):
     """
     roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # Fired when a roi is created
     roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
+    metadataChanged = pyqtSignal(pwsdt.AcqDir)
 
-    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window):
+    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window,
+                 title: str = "Roi Drawer 3000", initialField = AnalysisViewer.PlotFields.Thumbnail):
         QWidget.__init__(self, parent=parent, flags=flags)
-        self.setWindowTitle("Roi Drawer 3000")
+        self.setWindowTitle(title)
         self.metadatas = metadatas
 
         layout = QGridLayout()
 
         self._mdIndex = 0
-        self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], 'title')
+        self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField)
         self.anViewer.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
 
         self.saver = RoiSaverController(parent=self)
@@ -190,6 +192,7 @@ class RoiDrawer(QWidget):
         self.anViewer.roiFilter.setEditText(currRoi) #manually force the ROI name to stay the same.
         self.selector.reset() #Make sure to get rid of all rois
         self.setWindowTitle(f"Roi Drawer - {os.path.split(md.filePath)[-1]}")
+        self.metadataChanged.emit(md)
         self._mdIndex = idx
 
     def setDisplayedAcquisition(self, acq: pwsdt.AcqDir):

@@ -1,50 +1,47 @@
 from __future__ import annotations
-import typing
+import typing as t_
 import warnings
 import logging
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget, QApplication
+from PyQt5.QtWidgets import QWidget, QApplication, QInputDialog
 
 from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPlugin
 import os
 
-from ._ui.widget import SequenceViewer
+from pwspy_gui.PWSAnalysisApp.plugins.acquisitionAwareROIDrawer._control import SequenceController
+
+from ._ui import SeqRoiDrawer
 from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
 from pwspy.utility.acquisition.steps import SequencerStep
-from pwspy.utility.acquisition import RuntimeSequenceSettings
+from pwspy.utility.acquisition import RuntimeSequenceSettings, loadDirectory
 from pwspy.dataTypes import AcqDir
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
 
 
-def requirePluginActive(method):
-    """A decorator that only runs the decorated function if the plugin UI is open"""
-    def newMethod(self, *args, **kwargs):
-        if self._ui.isVisible():  # If the ui isn't visible then we consider the plugin to be off.
-            method(self, *args, **kwargs)
-    return newMethod
-
-
-class AcquisitionSequencerPlugin(CellSelectorPlugin):
+class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
     def __init__(self):
         self._selector: CellSelector = None
         self._sequence: SequencerStep = None
         self._cells: typing.List[SeqAcqDir] = None
-        self._ui = SequenceViewer()
-        self._ui.newCoordSelected.connect(self._updateSelectorSelection)
+        self._ui = None
 
     def setContext(self, selector: CellSelector, parent: QWidget):
         """set the CellSelector that this plugin is associated to."""
         self._selector = selector
+        anName = QInputDialog.getText(parent=parent, title='Analysis Name', label='Please input the analysis name', text='p0')
+        acqs = selector.getSelectedCellMetas()
+
+        loadDirectory()
+        controller = SequenceController()
+        self._ui = SeqRoiDrawer()
         self._ui.setParent(parent)
         self._ui.setWindowFlags(QtCore.Qt.Window)  # Without this is just gets added to the main window in a weird way.
 
-    @requirePluginActive
     def onCellsSelected(self, cells: typing.List[pwsdt.AcqDir]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 
-    @requirePluginActive
     def onReferenceSelected(self, cell: pwsdt.AcqDir):
         """This method will be called when the CellSelector indicates that it has had a new reference selected."""
         pass
@@ -119,60 +116,26 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         # return tuple((QTableWidgetItem(), QTableWidgetItem()))  # This will happen if the acquisition has a coords file but the coord isn't actually found in the sequence file.
         #
 
-    def _updateSelectorSelection(self, coordRange: SequencerCoordinateRange):
-        select: typing.List[AcqDir] = []
-        for cell in self._cells:
-            if cell.sequencerCoordinate in coordRange:
-                select.append(cell.acquisition)
-        self._selector.setSelectedCells(select)
+    def _loadFromAcqs(self, acqs: t_.Sequence[pwsdt.AcqDir]):
+        commonpath = os.path.commonpath([acq.filePath for acq in acqs])
+        logger = logging.getLogger(__name__)
+        logger.debug(f"New cells loaded at common path: {commonPath}")
+        for i in range(3):  # Look up to 3 parent directories for a valid sequence file.
+            try:
+                sequenceRoot = RuntimeSequenceSettings.fromJsonFile(commonPath)
+                logger.debug(f"Loaded sequence file at {commonpath}")
+                if sequenceRoot.uuid is None:
+                    warnings.warn(
+                        "Old acquisition sequence file must have been loaded. No UUID found. Acquisitions returned by this function may not actually belong to this sequence.")
+            except FileNotFoundError:
+                commonPath = os.path.split(commonPath)[0]  # Go up one directory
+                logger.debug(f"No sequence file found. Trying again at: {commonPath}")
+                continue
 
+            foundAcqs = []  # We only get here
+            for f in cells:
+                try:
+                    foundAcqs.append(SeqAcqDir(f))
+                except FileNotFoundError:
+                    pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
 
-if __name__ == '__main__':
-    from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer._ui.TreeView import MyTreeView
-
-    with open(r'C:\Users\nicke\Desktop\data\toast2\sequence.pwsseq') as f:
-        s = SequencerStep.fromJson(f.read())
-    import sys
-    from pwspy import dataTypes as pwsdt
-    from glob import glob
-
-    acqs = [pwsdt.AcqDir(i) for i in glob(r"C:\Users\nicke\Desktop\data\toast2\Cell*")]
-    sacqs = [SeqAcqDir(acq) for acq in acqs]
-
-    import sys
-
-    app = QApplication(sys.argv)
-
-
-    view = MyTreeView()
-    view.setRoot(s)
-
-    view.setWindowTitle("Simple Tree Model")
-    view.show()
-    sys.exit(app.exec_())
-
-
-    app = QApplication(sys.argv)
-
-    W = QWidget()
-    W.setLayout(QHBoxLayout())
-
-    w = QTreeWidget()
-    w.setColumnCount(2)
-    w.addTopLevelItem(s)
-    w.setIndentation(10)
-
-    w2 = DictTreeView()
-    w2.setColumnCount(2)
-    w2.setIndentation(10)
-
-
-    w.itemClicked.connect(lambda item, column: w2.setDict(item.settings))
-
-    W.layout().addWidget(w)
-    W.layout().addWidget(w2)
-
-
-    W.show()
-    app.exec()
-    a = 1

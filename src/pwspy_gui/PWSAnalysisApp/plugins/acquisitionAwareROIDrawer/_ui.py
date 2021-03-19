@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QTimer
-from PyQt5.QtGui import QPalette, QColor
-from pwspy.utility.acquisition.steps import PositionsStep, TimeStep
+from pwspy_gui.PWSAnalysisApp.plugins.acquisitionAwareROIDrawer._control import SequenceController
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
 from PyQt5.QtWidgets import QWidget, QButtonGroup, QPushButton, QHBoxLayout, QVBoxLayout, QCheckBox, QLabel, QFrame
 import typing as t_
-import pwspy.dataTypes as pwsdt
-import numpy as np
+
 if t_.TYPE_CHECKING:
     from pwspy.analysis.pws import PWSAnalysisResults
     from pwspy.analysis.dynamics import DynamicsAnalysisResults
-    from pwspy.utility.acquisition import SeqAcqDir, SequencerStep
+    from pwspy.utility.acquisition import SeqAcqDir
+    import pwspy.dataTypes as pwsdt
 
     AnalysisResultsComboType = t_.Tuple[
             t_.Optional[PWSAnalysisResults],
@@ -27,11 +26,15 @@ class SeqRoiDrawer(QWidget):
         self._controller = controller
 
         self._drawer = RoiDrawer(metadatas=[(seqAcq.acquisition, anResults) for seqAcq, anResults in metadatas], parent=self, flags=QtCore.Qt.Widget)  # Override the default behavior of showing as it's own window.
+        self._drawer.metadataChanged.connect(self._drawMetaDataChangeUnprompted)
+        self._ignoreDrawerSignals = False
+
         self._optionsPanel = OptionsPanel(parent=self)
         self._optionsPanel.animateTimerFired.connect(self._handleAnimationEvent)
 
         l = QVBoxLayout()
 
+        self._positionsBar: ButtonBar
         if controller.getPositionNames() is not None:
             self._positionsBar = ButtonBar(controller.getPositionNames(), self)
             self._positionsBar.buttonClicked.connect(self.setAcquisition)
@@ -39,6 +42,7 @@ class SeqRoiDrawer(QWidget):
         else:
             self._positionsBar = None
 
+        self._timesBar: ButtonBar
         if controller.getTimeNames() is not None:
             self._timesBar = ButtonBar(controller.getTimeNames(), self)
             self._timesBar.buttonClicked.connect(self.setAcquisition)
@@ -61,12 +65,22 @@ class SeqRoiDrawer(QWidget):
         posIndex = self._positionsBar.getSelectedButtonId() if self._positionsBar is not None else None
         timeIndex = self._timesBar.getSelectedButtonId() if self._timesBar is not None else None
         acq = self._controller.getAcquisition(posIndex, timeIndex)
+        self._ignoreDrawerSignals = True
         self._drawer.setDisplayedAcquisition(acq.acquisition)
+        self._ignoreDrawerSignals = False
 
     def _handleAnimationEvent(self):
         if self._timesBar is None:
             return
         self._timesBar.selectNextButton()
+
+    def _drawMetaDataChangeUnprompted(self, acq: pwsdt.AcDir):
+        if not self._ignoreDrawerSignals:
+            tIdx, pIdx = self._controller.getIndices(acq)
+            # self.blockSignals(True)
+            self._positionsBar.setButtonSelected(pIdx)
+            self._timesBar.setButtonSelected(tIdx)
+            # self.blockSignals(False)
 
 
 class ButtonBar(QWidget):
@@ -97,7 +111,10 @@ class ButtonBar(QWidget):
         id = self._selectedButtonId + 1
         if id >= len(self._bGroup.buttons()):
             id = 0
-        btn = self._bGroup.button(id)
+        self.setButtonSelected(id)
+
+    def setButtonSelected(self, ID: int):
+        btn = self._bGroup.button(ID)
         btn.click()
 
 
@@ -146,52 +163,12 @@ class OptionsPanel(QFrame):
             trackMovement=self._trackImCB.isChecked())
 
 
-class SequenceController:
-    """A utility class to help with selected acquisitions from a sequence that includes a multiple position and time series. both are optional"""
-    def __init__(self, sequence: SequencerStep, acqs: t_.Sequence[SeqAcqDir]):
-        self.sequence = sequence
-        self.acqs = acqs
-        posSteps = [step for step in sequence.iterateChildren() if isinstance(step, PositionsStep)]
-        assert not len(posSteps) > 1, "Sequences with more than one `MultiplePositionsStep` are not currently supported"
-        timeSteps = [step for step in sequence.iterateChildren() if isinstance(step, TimeStep)]
-        assert not len(timeSteps) > 1, "Sequences with more than one `TimeSeriesStep` are not currently supported"
-
-        self.timeStep = timeSteps[0] if len(timeSteps) > 0 else None
-        self.posStep = posSteps[0] if len(posSteps) > 0 else None
-        self._iterSteps = (self.timeStep, self.posStep)
-
-    def getTimeNames(self) -> t_.Optional[t_.Sequence[str]]:
-        if self.timeStep is None:
-            return None
-        else:
-            return tuple([self.timeStep.getIterationName(i) for i in range(self.timeStep.stepIterations())])
-
-    def getPositionNames(self) -> t_.Optional[t_.Sequence[str]]:
-        if self.posStep is None:
-            return None
-        else:
-            return tuple([self.posStep.getIterationName(i) for i in range(self.posStep.stepIterations())])
-
-    def getAcquisition(self, posIndex: t_.Optional[int], tIndex: t_.Optional[int]) -> SeqAcqDir:
-        step: SequencerStep = self._iterSteps[np.argmax([len(i.getTreePath()) if i is not None else 0 for i in self._iterSteps])]  # The step that is furthest down the tree path
-        coordRange = step.getCoordinate()
-        if self.timeStep is not None:
-            coordRange.setAcceptedIterations(self.timeStep.id, [tIndex])
-        if self.posStep is not None:
-            coordRange.setAcceptedIterations(self.posStep.id, [posIndex])
-        for acq in self.acqs:
-            coord = acq.sequencerCoordinate
-            if coord in coordRange:
-                return acq
-
-        raise ValueError(f"No acquisition was found to match Position index: {posIndex}, Time index: {tIndex}") # If we got this far then no matching acquisition was found.
-
 if __name__ == '__main__':
     from pwspy.utility.acquisition import loadDirectory
     from PyQt5.QtWidgets import QApplication
     import sys
     # d = r'\\BackmanLabNAS\home\Year3\KuriosBandwidth\data' # Positions only experiment
-    d = r'\\BackmanLabNAS\Public\surbhi_nick_share\MCF10A D-Ala media auto' # Time series
+    d = r'\\BackmanLabNAS\Public\surbhi_nick_share\MCF10A D-Ala media auto' # Time series and positions
     sequence, acqs = loadDirectory(d)
     cont = SequenceController(sequence, acqs)
 
