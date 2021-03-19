@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QTimer
-from pwspy_gui.PWSAnalysisApp.plugins.acquisitionAwareROIDrawer._control import SequenceController
+from pwspy_gui.PWSAnalysisApp.plugins.acquisitionAwareROIDrawer._control import SequenceController, Options, RoiController
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
 from PyQt5.QtWidgets import QWidget, QButtonGroup, QPushButton, QHBoxLayout, QVBoxLayout, QCheckBox, QLabel, QFrame
@@ -23,14 +23,19 @@ class SeqRoiDrawer(QWidget):
     def __init__(self, controller: SequenceController, metadatas: t_.List[t_.Tuple[SeqAcqDir, t_.Optional[AnalysisResultsComboType]]], parent: QWidget = None, flags=QtCore.Qt.Window):
         super().__init__(parent=parent, flags=flags)
         self.setWindowTitle("Sequence-Aware ROI Drawer")
-        self._controller = controller
+        self._seqController = controller
+        self._roiController = RoiController(self._seqController, initialOptions=Options(False, False), parent=self)
 
         self._drawer = RoiDrawer(metadatas=[(seqAcq.acquisition, anResults) for seqAcq, anResults in metadatas], parent=self, flags=QtCore.Qt.Widget)  # Override the default behavior of showing as it's own window.
         self._drawer.metadataChanged.connect(self._drawMetaDataChangeUnprompted)
+        self._drawer.roiCreated.connect(lambda acq, roi, overwrite: self._roiController.setRoiChanged(acq, roi, overwrite))
+        self._drawer.roiDeleted.connect(self._roiController.deleteRoi)
         self._ignoreDrawerSignals = False
 
-        self._optionsPanel = OptionsPanel(parent=self)
+        self._optionsPanel = OptionsPanel(parent=self, initialOptions=self._roiController.getOptions())
         self._optionsPanel.animateTimerFired.connect(self._handleAnimationEvent)
+        self._optionsPanel.optionsChanged.connect(self._roiController.setOptions)
+
 
         l = QVBoxLayout()
 
@@ -64,7 +69,7 @@ class SeqRoiDrawer(QWidget):
     def setAcquisition(self):
         posIndex = self._positionsBar.getSelectedButtonId() if self._positionsBar is not None else None
         timeIndex = self._timesBar.getSelectedButtonId() if self._timesBar is not None else None
-        acq = self._controller.getAcquisition(posIndex, timeIndex)
+        acq = self._seqController.setCoordinates(posIndex, timeIndex)
         self._ignoreDrawerSignals = True
         self._drawer.setDisplayedAcquisition(acq.acquisition)
         self._ignoreDrawerSignals = False
@@ -76,11 +81,11 @@ class SeqRoiDrawer(QWidget):
 
     def _drawMetaDataChangeUnprompted(self, acq: pwsdt.AcDir):
         if not self._ignoreDrawerSignals:
-            tIdx, pIdx = self._controller.getIndices(acq)
-            # self.blockSignals(True)
-            self._positionsBar.setButtonSelected(pIdx)
-            self._timesBar.setButtonSelected(tIdx)
-            # self.blockSignals(False)
+            tIdx, pIdx = self._seqController.getIndicesForAcquisition(acq)
+            if self._positionsBar is not None:
+                self._positionsBar.setButtonSelected(pIdx)
+            if self._timesBar is not None:
+                self._timesBar.setButtonSelected(tIdx)
 
 
 class ButtonBar(QWidget):
@@ -120,15 +125,14 @@ class ButtonBar(QWidget):
 
 class OptionsPanel(QFrame):
     animateTimerFired = pyqtSignal()
+    optionsChanged = pyqtSignal(Options)
 
-    class Options(t_.NamedTuple):
-        copyAlongTime: bool
-        trackMovement: bool
-
-    def __init__(self, parent: QWidget = None):
+    def __init__(self, parent: QWidget = None, initialOptions: Options = None):
         super().__init__(parent=parent)
         self._copyTimeCB = QCheckBox("Copy ROI changes along Time axis", parent=self)
+        self._copyTimeCB.stateChanged.connect(lambda: self.optionsChanged.emit(self.getOptions()))
         self._trackImCB = QCheckBox("Track cell movement", parent=self)
+        self._trackImCB.stateChanged.connect(lambda: self.optionsChanged.emit(self.getOptions()))
         self._animateBtn = QPushButton("Animate Time axis", parent=self)
         self._animateBtn.setCheckable(True)
 
@@ -151,6 +155,9 @@ class OptionsPanel(QFrame):
         self.setLayout(l)
         self.setFrameStyle(QFrame.Box)
 
+        if initialOptions is not None:
+            self.setOptions(initialOptions)
+
     def _handleAnimateCheck(self, checked: bool):
         if checked:
             self._animateTimer.start()
@@ -158,9 +165,13 @@ class OptionsPanel(QFrame):
             self._animateTimer.stop()
 
     def getOptions(self) -> Options:
-        return OptionsPanel.Options(
+        return Options(
             copyAlongTime=self._copyTimeCB.isChecked(),
             trackMovement=self._trackImCB.isChecked())
+
+    def setOptions(self, options: Options):
+        self._copyTimeCB.setChecked(options.copyAlongTime)
+        self._trackImCB.setChecked(options.trackMovement)
 
 
 if __name__ == '__main__':
