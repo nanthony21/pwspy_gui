@@ -88,11 +88,12 @@ class SeqRoiDrawer(QWidget):
                 self._timesBar.setButtonSelected(tIdx)
 
 
-class ButtonBar(QWidget):
+class ButtonBar(QFrame):
     buttonClicked = pyqtSignal(str, int)  # Indicates the iteration number and iteration name of the button that was clicked
 
     def __init__(self, items: t_.Sequence[str], parent=None):
         super().__init__(parent=parent)
+        self.setFrameStyle(QFrame.Panel)
         self._bGroup = QButtonGroup(self)
         l = QHBoxLayout(self)
         for i, itemName in enumerate(items):
@@ -103,6 +104,7 @@ class ButtonBar(QWidget):
         self._selectedButtonId = self._bGroup.id(self._bGroup.buttons()[0])
         self._bGroup.buttons()[0].click()  # Make sure at least one button is selected.
         self._bGroup.buttonClicked.connect(self._buttonSelected)
+        l.setSpacing(1)  # Move buttons close together
         self.setLayout(l)
 
     def _buttonSelected(self, btn):

@@ -14,7 +14,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
-
+from __future__ import annotations
+import abc
+import enum
 import logging
 import os
 import re
@@ -38,6 +40,7 @@ from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
 from pwspy.dataTypes import Roi, AcqDir
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
 from pwspy.utility.plotting.roiColor import roiColor
+import pwspy.dataTypes as pwsdt
 
 @dataclass
 class RoiParams:
@@ -47,8 +50,38 @@ class RoiParams:
     selected: bool
 
 
+class ROIManager(abc.ABC):
+    class Actions(enum.Enum):
+        DELETE = enum.auto()
+        MODIFY = enum.auto()
+        CREATE = enum.auto()
+
+    @abc.abstractmethod
+    def handleROIEvent(self, action: ROIManager.Actions, roi: pwsdt.Roi):
+        pass
+
+    @abc.abstractmethod
+    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.Roi:
+        pass
+
+
+class _DefualtROIManager(ROIManager): # TODO LRU cache
+    def handleROIEvent(self, action: ROIManager.Actions, roi: pwsdt.Roi):
+        if action == self.Actions.MODIFY:
+            pass
+        elif action == self.Actions.DELETE:
+            roi.
+            param.roi.deleteRoi(os.path.split(param.roi.filePath)[0], param.roi.name, param.roi.number)
+
+        elif action == self.Actions.CREATE:
+            pass
+
+    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.Roi:
+        return acq.loadRoi(roiName, roiNum)
+
+
 class RoiPlot(QWidget):
-    """Adds handling for ROIs to the BigPlot class."""
+    """Adds GUI handling for ROIs."""
     roiDeleted = pyqtSignal(AcqDir, Roi)
 
     def __init__(self, acqDir: AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
@@ -86,6 +119,8 @@ class RoiPlot(QWidget):
 
         self._toggleCids = None
         self.enableHoverAnnotation(True)
+
+        self._roiManager = _DefualtROIManager()
 
     def getImageData(self) -> np.ndarray:
         return self._plotWidget.data
@@ -165,7 +200,7 @@ class RoiPlot(QWidget):
             def deleteFunc():
                 for param in self.rois:
                     if param.selected:
-                        param.roi.deleteRoi(os.path.split(param.roi.filePath)[0], param.roi.name, param.roi.number)
+                        self._roiManager.handleROIEvent(self._roiManager.Actions.DELETE, param.roi)
                         self.roiDeleted.emit(self.metadata, param.roi)
                 self.showRois()
 
@@ -260,7 +295,7 @@ class RoiPlot(QWidget):
         for name, num, fformat in self.metadata.getRois():
             if re.fullmatch(pattern, name):
                 try:
-                    self.addRoi(self.metadata.loadRoi(name, num, fformat))
+                    self.addRoi(self._roiManager.getROI(self.metadata, name, num))
                 except Exception as e:
                     logger = logging.getLogger(__name__)
                     logger.warning(f"Failed to load Roi with name: {name}, number: {num}, format: {fformat.name}")

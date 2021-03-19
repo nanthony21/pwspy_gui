@@ -13,6 +13,7 @@ class Options(t_.NamedTuple):
 # TODO Doesn't detect ROI modification from right click menu. Make a "ROI modification handler" so that the actuall saving can be easily swappable
 # TODO remove "Tracking" option for now.
 # TODO key bindings for quick modification.
+# TODO add Image Stabilization option, use optical flow to track full image shift.
 class SequenceController:
     """A utility class to help with selected acquisitions from a sequence that includes a multiple position and time series. both are optional"""
     def __init__(self, sequence: SequencerStep, acqs: t_.Sequence[SeqAcqDir]):
