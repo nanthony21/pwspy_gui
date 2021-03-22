@@ -63,7 +63,9 @@ class CellSelector(metaclass=QABCMeta):
     def setHighlightedReference(self, ref: pwsdt.AcqDir): pass
 
     @abc.abstractmethod
-    def refreshCellItems(self): pass
+    def refreshCellItems(self, cells: List[pwsdt.AcqDir] = None):
+        """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
+        pass
 
     @abc.abstractmethod
     def close(self): pass

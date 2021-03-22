@@ -24,31 +24,31 @@ from pwspy.dataTypes import Roi
 from pwspy.analysis.compilation import (DynamicsRoiCompiler, DynamicsCompilerSettings, DynamicsRoiCompilationResults,
                                         PWSRoiCompiler, PWSCompilerSettings, PWSRoiCompilationResults,
                                         GenericRoiCompiler, GenericCompilerSettings, GenericRoiCompilationResults)
-
+from typing import NamedTuple
 """These utility classes are used to conveniently treat analysis objects of different types that belong together as a single object."""
 
 
-class ConglomerateCompilerSettings:
-    def __init__(self, pwsSettings: PWSCompilerSettings, dynSettings: DynamicsCompilerSettings, genSettings: GenericCompilerSettings):
-        self.pws = pwsSettings
-        self.dyn = dynSettings
-        self.generic = genSettings
+class ConglomerateCompilerSettings(NamedTuple):
+    pws: PWSCompilerSettings
+    dyn: DynamicsCompilerSettings
+    generic: GenericCompilerSettings
 
 
-class ConglomerateCompilerResults:
-    def __init__(self, pws: PWSRoiCompilationResults, dyn: DynamicsRoiCompilationResults, gen: GenericRoiCompilationResults):
-        self.pws = pws
-        self.dyn = dyn
-        self.generic = gen
+class ConglomerateCompilerResults(NamedTuple):
+    pws: PWSRoiCompilationResults
+    dyn: DynamicsRoiCompilationResults
+    generic: GenericRoiCompilationResults
 
 
-class ConglomerateAnalysisResults:
-    def __init__(self, pws: Optional[PWSAnalysisResults], dyn: Optional[DynamicsAnalysisResults]):
-        self.pws = pws
-        self.dyn = dyn
+class ConglomerateAnalysisResults(NamedTuple):
+    pws: Optional[PWSAnalysisResults]
+    dyn: Optional[DynamicsAnalysisResults]
 
 
 class ConglomerateCompiler:
+    """
+    This convenience class combines the actions of the compilers defined in `pwspy.analysis.compilation` into a single object.
+    """
     def __init__(self, settings: ConglomerateCompilerSettings):
         self.settings = settings
         self.pws = PWSRoiCompiler(self.settings.pws)

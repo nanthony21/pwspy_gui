@@ -49,43 +49,15 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         """This method will be called when the CellSelector indicates that it has had a new reference selected."""
         pass
 
+    @requirePluginActive
     def onNewCellsLoaded(self, cells: typing.List[pwsdt.AcqDir]):
         """This method will be called when the CellSelector indicates that new cells have been loaded to the selector."""
-        if len(cells) == 0:  # This causes a crash
-            return
-        cellFilePaths = [acq.filePath for acq in cells]
-
-        #Search the parent directory for a `sequence.pwsseq` file containing the sequence information.
-        paths = [i.filePath for i in cells]
-        commonPath = os.path.commonpath(paths)
-        logger = logging.getLogger(__name__)
-        logger.debug(f"New cells loaded at common path: {commonPath}")
-        # We will search up to 3 parent directories for a sequence file
-        for i in range(3):
-            try:
-                sequenceRoot = RuntimeSequenceSettings.fromJsonFile(commonPath)
-                if sequenceRoot.uuid is None:
-                    warnings.warn("Old acquisition sequence file must have been loaded. No UUID found. Acquisitions returned by this function may not actually belong to this sequence.")
-            except FileNotFoundError:
-                commonPath = os.path.split(commonPath)[0]  # Go up one directory
-                logger.debug(f"No sequence file found. Trying again at: {commonPath}")
-                continue
-
-            foundAcqs = []
-            for f in cells:
-                try:
-                    foundAcqs.append(SeqAcqDir(f))
-                except FileNotFoundError:
-                    pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
-            foundAcqs = [acq for acq in foundAcqs if acq.sequencerCoordinate.uuid == sequenceRoot.uuid]  # Filter out acquisitions that don't have a matching UUID to the sequence file.
-            logger.debug(f"Successfully loaded {len(foundAcqs)} sequenced acquisitions.")
-            self._cells = [acq for acq in foundAcqs if acq.acquisition.filePath in cellFilePaths]
-            self._sequence = sequenceRoot.rootStep
+        sequence, acqs = self._loadNewSequence(cells)
+        self._sequence = sequence
+        self._cells = acqs
+        if sequence is not None:
             self._ui.setSequenceStepRoot(self._sequence)
-            return
-        # We only get this far if the sequence file search fails.
-        self._sequence = None
-        self._cells = None
+
 
     def getName(self) -> str:
         """The name to refer to this plugin by."""
@@ -126,6 +98,39 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
                 select.append(cell.acquisition)
         self._selector.setSelectedCells(select)
 
+    def _loadNewSequence(self, cells: typing.Sequence[pwsdt.AcqDir]) -> typing.Tuple[SequencerStep, typing.Sequence[SeqAcqDir]]:
+        if len(cells) == 0:  # This causes a crash
+            return None, None
+        cellFilePaths = [acq.filePath for acq in cells]
+
+        #Search the parent directory for a `sequence.pwsseq` file containing the sequence information.
+        paths = [i.filePath for i in cells]
+        commonPath = os.path.commonpath(paths)
+        logger = logging.getLogger(__name__)
+        logger.debug(f"New cells loaded at common path: {commonPath}")
+        # We will search up to 3 parent directories for a sequence file
+        for i in range(3):
+            try:
+                sequenceRoot = RuntimeSequenceSettings.fromJsonFile(commonPath)
+                if sequenceRoot.uuid is None:
+                    warnings.warn("Old acquisition sequence file must have been loaded. No UUID found. Acquisitions returned by this function may not actually belong to this sequence.")
+            except FileNotFoundError:
+                commonPath = os.path.split(commonPath)[0]  # Go up one directory
+                logger.debug(f"No sequence file found. Trying again at: {commonPath}")
+                continue
+
+            foundAcqs = []
+            for f in cells:
+                try:
+                    foundAcqs.append(SeqAcqDir(f))
+                except FileNotFoundError:
+                    pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
+            foundAcqs = [acq for acq in foundAcqs if acq.sequencerCoordinate.uuid == sequenceRoot.uuid]  # Filter out acquisitions that don't have a matching UUID to the sequence file.
+            logger.debug(f"Successfully loaded {len(foundAcqs)} sequenced acquisitions.")
+            foundAcqs = [acq for acq in foundAcqs if acq.acquisition.filePath in cellFilePaths]  # TODo what is the purpose of this
+            sequence = sequenceRoot.rootStep
+            return sequence, foundAcqs
+        return None, None  # Nothing was found
 
 if __name__ == '__main__':
     from pwspy_gui.PWSAnalysisApp.plugins.acquisitionSequencer._ui.TreeView import MyTreeView

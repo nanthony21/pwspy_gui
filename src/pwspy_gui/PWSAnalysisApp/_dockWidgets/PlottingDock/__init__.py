@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QScrollArea, QVBo
     QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame
 
 import pwspy.dataTypes as pwsdt
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.roiDrawer import RoiDrawer
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
 from pwspy_gui.sharedWidgets.utilityWidgets import AspectRatioWidget
 from .widgets.littlePlot import LittlePlot
 from ...componentInterfaces import CellSelector
@@ -113,9 +113,11 @@ class PlottingDock(QDockWidget):
 
     def _startRoiDrawing(self):
         metadatas = [(p.acq, p.analysis) for p in self._plots]
-        if len(metadatas) > 0: # Otherwise we crash
+        if len(metadatas) > 0:  # Otherwise we crash
             try:
                 self.roiDrawer = RoiDrawer(metadatas, self)
+                self.roiDrawer.roiCreated.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
+                self.roiDrawer.roiDeleted.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
             except Exception as e:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self, "Error", "An error occured. Please see the log file.")
