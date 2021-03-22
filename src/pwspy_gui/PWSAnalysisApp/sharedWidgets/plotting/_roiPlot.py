@@ -81,6 +81,7 @@ class _DefualtROIManager(ROIManager): # TODO LRU cache
 class RoiPlot(QWidget):
     """Adds GUI handling for ROIs."""
     roiDeleted = pyqtSignal(AcqDir, Roi)
+    roiModified = pyqtSignal(AcqDir, Roi)
 
     def __init__(self, acqDir: AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
@@ -122,7 +123,6 @@ class RoiPlot(QWidget):
 
     def getImageData(self) -> np.ndarray:
         return self._plotWidget.data
-
     def setRoiPlotMetadata(self, metadata: AcqDir):
         """Refresh the ROIs based on a new metadata. Also needs to be provided with the data for the image to display."""
         self.metadata = metadata
@@ -215,6 +215,7 @@ class RoiPlot(QWidget):
                         newRoi = Roi.fromVerts(param.roi.name, param.roi.number, np.array(verts),
                                                param.roi.mask.shape)
                         self._roiManager.handleROIEvent(self._roiManager.Actions.MODIFY, self.metadata, newRoi)
+                        self.roiModified.emit(self.metadata, newRoi)
                     self._polyWidg.set_active(False)
                     self._polyWidg.set_visible(False)
                     self.showRois()
@@ -262,6 +263,7 @@ class RoiPlot(QWidget):
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
                         self.enableHoverAnnotation(True)
+                        self.roiModified.emit(self.metadata, newRoi)
                         self.showRois()
 
                     def cancelled():

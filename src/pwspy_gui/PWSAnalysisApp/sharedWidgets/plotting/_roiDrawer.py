@@ -49,6 +49,7 @@ class RoiDrawer(QWidget):
     """
     roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # Fired when a roi is created
     roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
+    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
     metadataChanged = pyqtSignal(pwsdt.AcqDir)
 
     def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window,
@@ -62,6 +63,7 @@ class RoiDrawer(QWidget):
         self._mdIndex = 0
         self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField)
         self.anViewer.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
+        self.anViewer.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
 
         self.saver = RoiSaverController(parent=self)
         self.saver.roiCreated.connect(self._handleRoiSaving)

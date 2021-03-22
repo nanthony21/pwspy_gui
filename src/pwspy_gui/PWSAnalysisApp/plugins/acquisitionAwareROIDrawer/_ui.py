@@ -30,6 +30,7 @@ class SeqRoiDrawer(QWidget):
         self._drawer.metadataChanged.connect(self._drawMetaDataChangeUnprompted)
         self._drawer.roiCreated.connect(lambda acq, roi, overwrite: self._roiController.setRoiChanged(acq, roi, overwrite))
         self._drawer.roiDeleted.connect(self._roiController.deleteRoi)
+        self._drawer.roiModified.connect(lambda acq, roi: self._roiController.setRoiChanged(acq, roi, True))
         self._ignoreDrawerSignals = False
 
         self._optionsPanel = OptionsPanel(parent=self, initialOptions=self._roiController.getOptions())
@@ -133,8 +134,8 @@ class OptionsPanel(QFrame):
         super().__init__(parent=parent)
         self._copyTimeCB = QCheckBox("Copy ROI changes along Time axis", parent=self)
         self._copyTimeCB.stateChanged.connect(lambda: self.optionsChanged.emit(self.getOptions()))
-        self._trackImCB = QCheckBox("Track cell movement", parent=self)
-        self._trackImCB.stateChanged.connect(lambda: self.optionsChanged.emit(self.getOptions()))
+        # self._trackImCB = QCheckBox("Track cell movement", parent=self)
+        # self._trackImCB.stateChanged.connect(lambda: self.optionsChanged.emit(self.getOptions()))
         self._animateBtn = QPushButton("Animate Time axis", parent=self)
         self._animateBtn.setCheckable(True)
 
@@ -151,7 +152,7 @@ class OptionsPanel(QFrame):
         label.setFont(f)
         l.addWidget(label)
         l.addWidget(self._copyTimeCB)
-        l.addWidget(self._trackImCB)
+        # l.addWidget(self._trackImCB)
         l.addWidget(self._animateBtn)
         l.addWidget(QWidget(self), stretch=1)  # This pushes everything up to the top.
         self.setLayout(l)
@@ -169,11 +170,11 @@ class OptionsPanel(QFrame):
     def getOptions(self) -> Options:
         return Options(
             copyAlongTime=self._copyTimeCB.isChecked(),
-            trackMovement=self._trackImCB.isChecked())
+            trackMovement=False)  # self._trackImCB.isChecked())
 
     def setOptions(self, options: Options):
         self._copyTimeCB.setChecked(options.copyAlongTime)
-        self._trackImCB.setChecked(options.trackMovement)
+        # self._trackImCB.setChecked(options.trackMovement)
 
 
 if __name__ == '__main__':
