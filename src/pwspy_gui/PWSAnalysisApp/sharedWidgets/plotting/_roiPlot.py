@@ -50,6 +50,7 @@ class RoiParams:
 class RoiPlot(QWidget):
     """Adds handling for ROIs to the BigPlot class."""
     roiDeleted = pyqtSignal(AcqDir, Roi)
+    roiModified = pyqtSignal(AcqDir, Roi)
 
     def __init__(self, acqDir: AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
@@ -182,6 +183,7 @@ class RoiPlot(QWidget):
                         newRoi = Roi.fromVerts(param.roi.name, param.roi.number, np.array(verts),
                                                param.roi.mask.shape)
                         newRoi.toHDF(self.metadata.filePath, overwrite=True)
+                        self.roiModified.emit(self.metadata, newRoi)
                     self._polyWidg.set_active(False)
                     self._polyWidg.set_visible(False)
                     self.showRois()
@@ -229,6 +231,7 @@ class RoiPlot(QWidget):
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
                         self.enableHoverAnnotation(True)
+                        self.roiModified.emit(self.metadata, newRoi)
                         self.showRois()
 
                     def cancelled():

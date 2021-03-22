@@ -30,6 +30,7 @@ class SeqRoiDrawer(QWidget):
         self._drawer.metadataChanged.connect(self._drawMetaDataChangeUnprompted)
         self._drawer.roiCreated.connect(lambda acq, roi, overwrite: self._roiController.setRoiChanged(acq, roi, overwrite))
         self._drawer.roiDeleted.connect(self._roiController.deleteRoi)
+        self._drawer.roiModified.connect(lambda acq, roi: self._roiController.setRoiChanged(acq, roi, True))
         self._ignoreDrawerSignals = False
 
         self._optionsPanel = OptionsPanel(parent=self, initialOptions=self._roiController.getOptions())
