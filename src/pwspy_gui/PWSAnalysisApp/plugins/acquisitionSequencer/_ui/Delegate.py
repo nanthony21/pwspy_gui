@@ -5,7 +5,6 @@ from PyQt5.QtCore import QSize, pyqtSignal
 from PyQt5.QtGui import QTextDocument, QAbstractTextDocumentLayout, QPalette
 from PyQt5.QtWidgets import QStyledItemDelegate, QWidget, QStyleOptionViewItem, QStyle, QGridLayout, QTableWidget, \
     QTableWidgetItem, QAbstractItemView, QSizePolicy, QApplication
-from pwspy.utility.acquisition.sequencerCoordinate import IterationRangeCoordStep
 from pwspy.utility.acquisition.steps import SequencerStep, CoordSequencerStep, StepTypeNames, ContainerStep
 
 
@@ -75,9 +74,9 @@ class IterationRangeEditor(QWidget):
 
         #Make the selection match
         for i in range(step.stepIterations()):
-            selectedIterations: IterationRangeCoordStep = step.data(QtCore.Qt.EditRole)
-            if selectedIterations is None: selectedIterations = IterationRangeCoordStep(step.id, [])  # no iterations selected, should be treated the same as having all iterations selected
-            if i in selectedIterations.iterations:
+            selectedIterations: typing.Tuple[int, typing.Sequence[int]] = step.data(QtCore.Qt.EditRole)
+            if selectedIterations is None: selectedIterations = (step.id, [])  # no iterations selected, should be treated the same as having all iterations selected
+            if i in selectedIterations[1]:
                 sel = True
             else:
                 sel = False
@@ -165,7 +164,7 @@ class IterationRangeDelegate(HTMLDelegate):
     def setModelData(self, editor: IterationRangeEditor, model: QtCore.QAbstractItemModel, index: QtCore.QModelIndex) -> None:
         step: SequencerStep = index.internalPointer()
         if isinstance(step, CoordSequencerStep):
-            coordRange = IterationRangeCoordStep(step.id, editor.getSelection())
+            coordRange = (step.id, editor.getSelection())
             step.setData(QtCore.Qt.EditRole, coordRange)
         self._editing = None
         self.sizeHintChanged.emit(index)
@@ -187,11 +186,11 @@ class IterationRangeDelegate(HTMLDelegate):
 
     def displayText(self, value: typing.Any, locale: QtCore.QLocale) -> str:
         if isinstance(value, CoordSequencerStep):
-            itRangeCoord: IterationRangeCoordStep = value.data(QtCore.Qt.EditRole)
+            itRangeCoord: typing.Tuple[int, typing.Sequence[int]] = value.data(QtCore.Qt.EditRole)
             if itRangeCoord is None:
                 selectedIterations = []  # TODO this happens for steps where we haven't assigned any iterations (non iterable step types). Should we have a `None` here?
             else:
-                selectedIterations = itRangeCoord.iterations
+                selectedIterations = itRangeCoord[1]
             if len(selectedIterations) == 0 or len(selectedIterations) == value.stepIterations():
                 s = ": all coords"
             else:

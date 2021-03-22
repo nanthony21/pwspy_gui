@@ -34,6 +34,7 @@ if t_.TYPE_CHECKING:
     from pwspy.analysis.pws import PWSAnalysisResults
     from pwspy.analysis.dynamics import DynamicsAnalysisResults
 
+
 def evalToolTip(cls: t_.Type[QWidget], method):
     """Given a QWidget and a function that returns a string, this decorator returns a modified class that will evaluate
     the function each time the tooltip is requested."""
@@ -243,9 +244,13 @@ class CellTableWidget(QTableWidget):
         _ = {i.row: i for i in self._cellItems} #Cell items keyed by their current row position.
         return [_[i] for i in rowIndices]
 
-    def refreshCellItems(self):
+    def refreshCellItems(self, cells: t_.List[AcqDir] = None):
+        """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
+        if cells is None:
+            cells = []
         for i in self._cellItems:
-            i.refresh()
+            if i.acqDir in cells:
+                i.refresh()
 
     def addCellItems(self, items: t_.List[CellTableWidgetItem]) -> None:
         row = len(self._cellItems)

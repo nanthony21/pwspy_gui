@@ -18,14 +18,14 @@
 import os
 
 import numpy as np
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore
 from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QMenu, QAction, QWidget, QLabel, QVBoxLayout
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 from pwspy.dataTypes import AcqDir, ImCube
-from .widgets import AnalysisPlotter
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.analysisViewer import AnalysisViewer
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._widgets import AnalysisPlotter
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._analysisViewer import AnalysisViewer
 from mpl_qt_viz.visualizers import PlotNd
 
 
@@ -100,25 +100,25 @@ class LittlePlot(AnalysisPlotter, QWidget):
         refl = self.analysis.pws.reflectance
         refl += self.analysis.pws.meanReflectance[:, :, None]  # The `reflectance has had the mean subtracted. add it back in.
         self.plotnd = PlotNd(refl.data, title=os.path.split(self.acq.filePath)[-1], names=('y', 'x', 'k (rad/um)'),
-                             indices=[range(refl.data.shape[0]), range(refl.data.shape[1]), refl.wavenumbers])
+                             indices=[range(refl.data.shape[0]), range(refl.data.shape[1]), refl.wavenumbers], parent=self)
 
     def plotRaw3d(self):
         im = ImCube.fromMetadata(self.acq.pws)
         self.plotnd = PlotNd(im.data, title=os.path.split(self.acq.filePath)[-1], names=('y', 'x', 'lambda'),
-                             indices=[range(im.data.shape[0]), range(im.data.shape[1]), im.wavelengths])
+                             indices=[range(im.data.shape[0]), range(im.data.shape[1]), im.wavelengths], parent=self)
 
     def plotOpd3d(self):
         opd, opdIndex = self.analysis.pws.opd
         self.plotnd = PlotNd(opd, names=('y', 'x', 'um'), title=os.path.split(self.acq.filePath)[-1],
-                             indices=[range(opd.shape[0]), range(opd.shape[1]), opdIndex])
+                             indices=[range(opd.shape[0]), range(opd.shape[1]), opdIndex], parent=self)
 
     def plotDynAn3d(self):
         refl = self.analysis.dyn.reflectance
         self.plotnd = PlotNd(refl.data, title=os.path.split(self.acq.filePath)[-1],
                              names=('y', 'x', 't'),
-                             indices=[range(refl.data.shape[0]), range(refl.data.shape[1]), refl.times])
+                             indices=[range(refl.data.shape[0]), range(refl.data.shape[1]), refl.times], parent=self)
 
     def plotDynRaw3d(self):
         im = self.acq.dynamics.toDataClass()
         self.plotnd = PlotNd(im.data, title=os.path.split(self.acq.filePath)[-1], names=('y', 'x', 't'),
-                             indices=[range(im.data.shape[0]), range(im.data.shape[1]), im.times])
+                             indices=[range(im.data.shape[0]), range(im.data.shape[1]), im.times], parent=self)

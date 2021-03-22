@@ -22,18 +22,19 @@ import typing
 from dataclasses import dataclass
 
 import matplotlib
+from PyQt5.QtCore import pyqtSignal
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.image import AxesImage
 from matplotlib.patches import  Polygon
 import numpy as np
 from PyQt5.QtGui import QCursor, QValidator
-from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QDialog, QWidget, QSlider, QGridLayout, QSpinBox, QDoubleSpinBox, \
+from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QDialog, QWidget, QGridLayout, QSpinBox, QDoubleSpinBox, \
     QMessageBox, QVBoxLayout
 from PyQt5 import QtCore
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.bigPlot import BigPlot
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
 from pwspy.dataTypes import Roi, AcqDir
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
 from pwspy.utility.plotting.roiColor import roiColor
@@ -48,17 +49,19 @@ class RoiParams:
 
 class RoiPlot(QWidget):
     """Adds handling for ROIs to the BigPlot class."""
+    roiDeleted = pyqtSignal(AcqDir, Roi)
+    roiModified = pyqtSignal(AcqDir, Roi)
+
     def __init__(self, acqDir: AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
             super().__init__(parent, flags=flags)
         else:
             super().__init__(parent=parent)
         self._plotWidget = BigPlot(data, self)
-        self.data = self._plotWidget.data  # TODO These variables are used by other widgets, leftover from when we used inheritance rather than encapsulation, it would be good to get rid of them.
         self.im = self._plotWidget.im
         self.ax = self._plotWidget.ax
         self.canvas = self._plotWidget.canvas
-        self.rois: typing.List[RoiParams] = []  # This list hold information about the ROIs that are currently displayed.
+        self.rois: typing.List[RoiParams] = []  # This list holds information about the ROIs that are currently displayed.
 
         self.roiFilter = QComboBox(self)
         self.roiFilter.setEditable(True)
@@ -85,7 +88,8 @@ class RoiPlot(QWidget):
         self._toggleCids = None
         self.enableHoverAnnotation(True)
 
-
+    def getImageData(self) -> np.ndarray:
+        return self._plotWidget.data
     def setRoiPlotMetadata(self, metadata: AcqDir):
         """Refresh the ROIs based on a new metadata. Also needs to be provided with the data for the image to display."""
         self.metadata = metadata
@@ -93,7 +97,7 @@ class RoiPlot(QWidget):
         currentSel = self.roiFilter.currentText()
         # updateFilter
         try:
-            self.roiFilter.currentIndexChanged.disconnect() # Without this line the roiFilter.clear() line is very slow.
+            self.roiFilter.currentIndexChanged.disconnect()  # Without this line the roiFilter.clear() line is very slow.
         except:
             pass #if the signal hasn't yet been connected we'll get an error. ignore it.
         self.roiFilter.clear()
@@ -162,6 +166,7 @@ class RoiPlot(QWidget):
                 for param in self.rois:
                     if param.selected:
                         param.roi.deleteRoi(os.path.split(param.roi.filePath)[0], param.roi.name, param.roi.number)
+                        self.roiDeleted.emit(self.metadata, param.roi)
                 self.showRois()
 
             def moveFunc():
@@ -177,6 +182,7 @@ class RoiPlot(QWidget):
                         newRoi = Roi.fromVerts(param.roi.name, param.roi.number, np.array(verts),
                                                param.roi.mask.shape)
                         newRoi.toHDF(self.metadata.filePath, overwrite=True)
+                        self.roiModified.emit(self.metadata, newRoi)
                     self._polyWidg.set_active(False)
                     self._polyWidg.set_visible(False)
                     self.showRois()
@@ -224,6 +230,7 @@ class RoiPlot(QWidget):
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
                         self.enableHoverAnnotation(True)
+                        self.roiModified.emit(self.metadata, newRoi)
                         self.showRois()
 
                     def cancelled():
@@ -334,7 +341,7 @@ class SinCityDlg(QDialog):
 
         self.ax.xaxis.set_visible(False)
         self.ax.yaxis.set_visible(False)
-        self.im = self.ax.imshow(self.parentRoiPlot.data)
+        self.im = self.ax.imshow(self.parentRoiPlot.getImageData())
 
         self._paintDebounce = QtCore.QTimer()  # This timer prevents the selectionChanged signal from firing too rapidly.
         self._paintDebounce.setInterval(200)
@@ -432,13 +439,13 @@ class SinCityDlg(QDialog):
 
     def paint(self):
         """Refresh the recommended regions. If stale is false then just repaint the cached regions without recalculating."""
-        if self.parentRoiPlot.data is not self.cachedImage:  # The image has been changed.
-            self.cachedImage = self.parentRoiPlot.data
+        if self.parentRoiPlot.getImageData() is not self.cachedImage:  # The image has been changed.
+            self.cachedImage = self.parentRoiPlot.getImageData()
             self.stale = True
         if self.stale:
             try:
                 rois = [parm.roi for parm in self.parentRoiPlot.rois]
-                data = roiColor(self.parentRoiPlot.data, rois, self.vmin.value(), self.vmax.value(), self.scaleBg.value(), hue=self.hue.value(), exponent=self.exp.value(), numScaleBarPix=self.scaleBar.value())
+                data = roiColor(self.parentRoiPlot.getImageData(), rois, self.vmin.value(), self.vmax.value(), self.scaleBg.value(), hue=self.hue.value(), exponent=self.exp.value(), numScaleBarPix=self.scaleBar.value())
                 self.im.set_data(data)
                 self.fig.canvas.draw_idle()
                 self.stale = False

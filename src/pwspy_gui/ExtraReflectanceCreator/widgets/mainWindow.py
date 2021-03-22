@@ -89,4 +89,5 @@ class MainWindow(QMainWindow):
         [i.setEnabled(en) for i in [self.binningCombo, self.saveButton, self.compareDatesButton, self.plotButton]]
 
     def viewFiles(self):
+        self.explorerWindow.refresh()
         self.explorerWindow.show()

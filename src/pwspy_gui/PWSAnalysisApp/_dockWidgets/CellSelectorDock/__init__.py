@@ -94,13 +94,16 @@ class CellSelectorDock(CellSelector, QDockWidget):
 
     def _showPluginMenu(self):
         menu = QMenu("plugin menu", self)
+        actions = []
         for plugin in self._pluginSupport.getPlugins():
             action = QAction(plugin.getName())
-            action.triggered.connect(lambda checked, p=plugin: p.onPluginSelected())
+            action.triggered.connect(lambda checked, p=plugin: self._pluginSupport.notifyPluginSelected(p))
             menu.addAction(action)
+            actions.append(action)  # Without this the actions get deleted before the menu is shown.
         menu.exec(self._pluginsButton.mapToGlobal(QPoint(0, self._pluginsButton.height())))
 
     def _addCells(self, acquisitions: List[pwsdt.AcqDir], workingDir: str):
+        workingDir = str(workingDir)  # This prevents problems if we pass a Path from pathlib instead.
         cellItems = []
         for acq in acquisitions:
             addedWidgets = []
@@ -234,5 +237,6 @@ class CellSelectorDock(CellSelector, QDockWidget):
             else:
                 refitem.setHighlighted(False)
 
-    def refreshCellItems(self):
-        self._tableWidget.refreshCellItems()
+    def refreshCellItems(self, cells: List[pwsdt.AcqDir] = None):
+        """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
+        self._tableWidget.refreshCellItems(cells=cells)
