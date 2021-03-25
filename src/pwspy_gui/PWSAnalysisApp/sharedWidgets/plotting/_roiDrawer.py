@@ -86,7 +86,7 @@ class RoiDrawer(QWidget):
         self.buttonGroup.addButton(self.paintButton)
         self.buttonGroup.buttonReleased.connect(self.handleButtons)
         [i.setCheckable(True) for i in self.buttonGroup.buttons()]
-        self.noneButton.setChecked(True) #This doesn't seem totrigger handle buttons. we'll do that at the end of the constructor
+        self.noneButton.setChecked(True) #This doesn't seem to trigger handle buttons. we'll do that at the end of the constructor
 
         def handleAdjustButton(checkstate: bool):
             if self.selector is not None:
@@ -140,7 +140,7 @@ class RoiDrawer(QWidget):
         if self.newRoiDlg.result() == QDialog.Accepted:
             md = self.metadatas[self._mdIndex][0]
             self.saver.saveNewRoi(roiName, self.newRoiDlg.number, np.array(verts), shape, md)
-        self.selector.setActive(True)  # Start the next roi.
+        self.selector.setActive(True)  # Start the next roiFile.
 
     def handleButtons(self, button):
         if button is self.lassoButton and self.lastButton_ is not button:

@@ -138,7 +138,7 @@ class CellTableWidgetItem:
         self._saveMetadata()
 
     def refresh(self):
-        """Set the number of roi's and analyses. Update the tooltips."""
+        """Set the number of roiFile's and analyses. Update the tooltips."""
         rois = self.acqDir.getRois()
         self.roiLabel.setNumber(len(rois))
         anNumber = 0 #This is in case the next few statements evaluate to false.

@@ -138,7 +138,7 @@ class ERWorkFlow:
 
         print("Select an ROI")
         verts = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select an ROI to analyze
-        mask = Roi.fromVerts('doesntmatter', 1, verts, cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
+        mask = Roi.fromVerts(verts, cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
         self.figs.extend(er.plotExtraReflection(cubes, theoryR, matCombos, numericalAperture, mask, plotReflectionImages=True))  # TODO rather than opening a million new figures open a single window that lets you flip through them.
         if saveToPdf:
             with PdfPages(os.path.join(saveDir, f"fig_{datetime.strftime(datetime.now(), '%d-%m-%Y %HH%MM%SS')}.pdf")) as pp:
@@ -199,8 +199,7 @@ class ERWorkFlow:
         anis = []
         figs = []  # These lists just maintain references to matplotlib figures to keep them responsive.
         verts = self.cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select a random of the selected cubes and use it to prompt the user for an analysis ROI
-        mask = Roi.fromVerts('doesntmatter', 1, verts=verts,
-                             dataShape=self.cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
+        mask = Roi.fromVerts(verts=verts, dataShape=self.cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
         for mat in set(self.cubes['material']):
             c = self.cubes[self.cubes['material'] == mat]
             fig, ax = plt.subplots()

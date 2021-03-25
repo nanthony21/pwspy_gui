@@ -186,7 +186,7 @@ class RoiPlot(QWidget):
         # Determine if a ROI was clicked on
         _ = [param for param in self.rois if param.polygon.contains(event)[0]]
         if len(_) > 0:
-            selectedROIParam = _[0]  # There should have only been one roi clicked on. select the first one from the list (hopefully only one there anyway)
+            selectedROIParam = _[0]  # There should have only been one roiFile clicked on. select the first one from the list (hopefully only one there anyway)
         else:
             selectedROIParam = None #No Roi was clicked
 
@@ -316,8 +316,8 @@ class RoiPlot(QWidget):
             self._plotWidget.ax.add_patch(poly)
             self.rois.append(RoiParams(roi, None, poly, False))
         else:  # In the case of old ROI files where the vertices of the outline are not available we have to back-calculate the polygon which does not look good. We make this polygon invisible so it is only used for click detection. we then display an image of the binary mask array.
-            overlay = roi.getImage(self._plotWidget.ax) # an image showing the exact shape of the ROI
-            poly = roi.getBoundingPolygon() # A polygon used for mouse event handling
+            overlay = roi.getImage(self._plotWidget.ax)  # an image showing the exact shape of the ROI
+            poly = roi.getBoundingPolygon()  # A polygon used for mouse event handling
             poly.set_visible(False)#poly.set_facecolor((0,0,0,0)) # Make polygon invisible
             poly.set_picker(0) # allow the polygon to trigger a pickevent
             self._plotWidget.ax.add_patch(poly)

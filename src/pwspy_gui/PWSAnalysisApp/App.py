@@ -41,7 +41,7 @@ import typing
 import pwspy.dataTypes as pwsdt
 
 
-class PWSApp(QApplication):  # TODO add a scriptable interface to load files, open roi window, run analysis etc.
+class PWSApp(QApplication):  # TODO add a scriptable interface to load files, open roiFile window, run analysis etc.
     def __init__(self, args):
         logger = logging.getLogger(__name__)
         logger.debug("About to call PWSApp superclass constructor")

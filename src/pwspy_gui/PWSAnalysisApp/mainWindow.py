@@ -62,7 +62,7 @@ class PWSWindow(QMainWindow):
                                     "This allows you to work on data anonymously without bias. You may need to run this "
                                     "software as `Admin` for this to work on Windows.")
         self.roiConvertAction = menu.addAction("Update ROI file formats")
-        self.roiConvertAction.setToolTip("Updates old .MAT roi files to a newer .H5 format that will run more efficiently."
+        self.roiConvertAction.setToolTip("Updates old .MAT roiFile files to a newer .H5 format that will run more efficiently."
                                          " Warning: The old files will be deleted.")
 
         toolBar = QToolBar("Tool Bar", self)
