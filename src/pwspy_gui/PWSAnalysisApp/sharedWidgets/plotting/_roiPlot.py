@@ -25,7 +25,7 @@ from PyQt5.QtCore import pyqtSignal
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.image import AxesImage
-from matplotlib.patches import  Polygon
+from matplotlib.patches import Polygon
 import numpy as np
 from PyQt5.QtGui import QCursor, QValidator
 from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout
@@ -39,7 +39,6 @@ from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._sinCityExporter import Sin
 @dataclass
 class RoiParams:
     roiFile: pwsdt.RoiFile
-    overlay: AxesImage
     polygon: Polygon
     selected: bool
 
@@ -55,7 +54,7 @@ class ROIManager(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int):
+    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int) -> pwsdt.RoiFile:
         pass
 
     @abc.abstractmethod
@@ -76,7 +75,7 @@ class _DefaultROIManager(ROIManager):  # TODO LRU cache
         roiFile.update(roi)
 
     def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int):
-        acq.saveRoi(roiName, roiNumber, roi)
+        return acq.saveRoi(roiName, roiNumber, roi)
 
     def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
         return acq.loadRoi(roiName, roiNum)
@@ -117,6 +116,7 @@ class RoiPlot(QWidget):
         layout.addWidget(self._plotWidget)
         self.setLayout(layout)
 
+        self.metadata: pwsdt.AcqDir = None
         self.setRoiPlotMetadata(acqDir)
 
         self.annot = self._plotWidget.ax.annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
@@ -158,7 +158,7 @@ class RoiPlot(QWidget):
             self.annot.xy = poly.xy.mean(axis=0)  # Set the location to the center of the polygon.
             text = f"{roi.name}, {roi.number}"
             if self.metadata.pws:  # A day may come where fluorescence is not taken on the same camera as pws, in this case we will have multiple pixel sizes and ROI handling will need an update. for now just assume we'll use PWS pixel size
-                if self.metadata.pws.pixelSizeUm: # For some systems (nanocytomics) this is None
+                if self.metadata.pws.pixelSizeUm:  # For some systems (nanocytomics) this is None
                     text += f"\n{self.metadata.pws.pixelSizeUm ** 2 * np.sum(roi.mask):.2f} $μm^2$"
             self.annot.set_text(text)
             self.annot.get_bbox_patch().set_alpha(0.4)
@@ -177,8 +177,8 @@ class RoiPlot(QWidget):
                 self.annot.set_visible(False)
                 self._plotWidget.canvas.draw_idle()
 
-    def setRoiSelected(self, roi: pwsdt.Roi, selected: bool):
-        param = [param for param in self.rois if roi is param.roiFile][0]
+    def setRoiSelected(self, roiFile: pwsdt.RoiFile, selected: bool):
+        param = [param for param in self.rois if roiFile is param.roiFile][0]
         param.selected = selected
         if selected:
             param.polygon.set_edgecolor((0, 1, 1, 0.9))  # Highlight selected rois.
@@ -196,17 +196,17 @@ class RoiPlot(QWidget):
         if len(_) > 0:
             selectedROIParam = _[0]  # There should have only been one roiFile clicked on. select the first one from the list (hopefully only one there anyway)
         else:
-            selectedROIParam = None #No Roi was clicked
+            selectedROIParam = None  # No Roi was clicked
 
         if event.button == 1 and selectedROIParam is not None: #Left click
             self.setRoiSelected(selectedROIParam.roiFile, not selectedROIParam.selected)
             self._plotWidget.canvas.draw_idle()
         if event.button == 3:  # "3" is the right button
-            #Actions that can happen even if no ROI was clicked on.
+            # Actions that can happen even if no ROI was clicked on.
             def deleteFunc():
                 for param in self.rois:
                     if param.selected:
-                        self._roiManager.handleROIEvent(self._roiManager.Actions.DELETE, self.metadata, param.roiFile)
+                        self._roiManager.removeRoi(param.roiFile)
                         self.roiDeleted.emit(self.metadata, param.roiFile)
                 self.showRois()
 
@@ -216,14 +216,14 @@ class RoiPlot(QWidget):
                 for param in self.rois:
                     if param.selected:
                         selectedROIParams.append(param)
-                        coordSet.append(param.roiFile.verts)
+                        coordSet.append(param.roiFile.getRoi().verts)
 
                 def done(vertsSet, handles):
                     for param, verts in zip(selectedROIParams, vertsSet):
-                        newRoi = pwsdt.Roi.fromVerts(param.roiFile.name, param.roiFile.number, np.array(verts),
-                                               param.roiFile.mask.shape)
-                        self._roiManager.handleROIEvent(self._roiManager.Actions.MODIFY, self.metadata, newRoi)
-                        self.roiModified.emit(self.metadata, newRoi)
+                        newRoi = pwsdt.Roi.fromVerts(np.array(verts),
+                                               param.roiFile.getRoi().mask.shape)
+                        self._roiManager.updateRoi(param.roiFile, newRoi)
+                        self.roiModified.emit(self.metadata, param.roiFile)
                     self._polyWidg.set_active(False)
                     self._polyWidg.set_visible(False)
                     self.showRois()
@@ -248,7 +248,7 @@ class RoiPlot(QWidget):
             moveAction = popMenu.addAction("Move Selected ROIs", moveFunc)
             selectAllAction = popMenu.addAction("De/Select All", selectAllFunc)
 
-            if not any([roiParam.selected for roiParam in self.rois]): # If no rois are selected then some actions can't be performed
+            if not any([roiParam.selected for roiParam in self.rois]):  # If no rois are selected then some actions can't be performed
                 deleteAction.setEnabled(False)
                 moveAction.setEnabled(False)
 
@@ -259,19 +259,19 @@ class RoiPlot(QWidget):
                 #Actions that require that a ROI was clicked on.
                 def editFunc():
                     # extract handle points from the polygon
-                    poly = shapelyPolygon(selectedROIParam.roiFile.verts)
+                    poly = shapelyPolygon(selectedROIParam.roiFile.getRoi().verts)
                     poly = poly.buffer(0)
                     poly = poly.simplify(poly.length ** .5 / 5, preserve_topology=False)
                     handles = poly.exterior.coords
 
                     def done(verts, handles):
                         verts = verts[0]
-                        newRoi = pwsdt.Roi.fromVerts(selectedROIParam.roiFile.name, selectedROIParam.roiFile.number, np.array(verts), selectedROIParam.roiFile.mask.shape)
-                        self._roiManager.handleROIEvent(self._roiManager.Actions.MODIFY, self.metadata, newRoi)
+                        newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.mask.shape)
+                        self._roiManager.updateRoi(param.roiFile, newRoi)
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
                         self.enableHoverAnnotation(True)
-                        self.roiModified.emit(self.metadata, newRoi)
+                        self.roiModified.emit(self.metadata, param.roiFile)
                         self.showRois()
 
                     def cancelled():
@@ -312,24 +312,16 @@ class RoiPlot(QWidget):
 
     def clearRois(self):
         for param in self.rois:
-            if param.overlay is not None:
-                param.overlay.remove()
             param.polygon.remove()
         self.rois = []
 
-    def addRoi(self, roi: pwsdt.Roi):
+    def addRoi(self, roiFile: pwsdt.RoiFile):
+        roi = roiFile.getRoi()
         if roi.verts is not None:
             poly = roi.getBoundingPolygon()
             poly.set_picker(0)  # allow the polygon to trigger a pickevent
             self._plotWidget.ax.add_patch(poly)
-            self.rois.append(RoiParams(roi, None, poly, False))
-        else:  # In the case of old ROI files where the vertices of the outline are not available we have to back-calculate the polygon which does not look good. We make this polygon invisible so it is only used for click detection. we then display an image of the binary mask array.
-            overlay = roi.getImage(self._plotWidget.ax)  # an image showing the exact shape of the ROI
-            poly = roi.getBoundingPolygon()  # A polygon used for mouse event handling
-            poly.set_visible(False)#poly.set_facecolor((0,0,0,0)) # Make polygon invisible
-            poly.set_picker(0) # allow the polygon to trigger a pickevent
-            self._plotWidget.ax.add_patch(poly)
-            self.rois.append(RoiParams(roi, overlay, poly, False))
+            self.rois.append(RoiParams(roiFile, poly, False))
 
     def _exportAction(self):
         def showSinCityDlg():

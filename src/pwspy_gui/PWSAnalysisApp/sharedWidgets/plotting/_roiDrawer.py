@@ -65,9 +65,6 @@ class RoiDrawer(QWidget):
         self.anViewer.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
         self.anViewer.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
 
-        self.saver = RoiSaverController(parent=self)
-        self.saver.roiCreated.connect(self._handleRoiSaving)
-
         self.newRoiDlg = NewRoiDlg(self)
 
         self.noneButton = QPushButton("Inspect")
@@ -139,8 +136,20 @@ class RoiDrawer(QWidget):
         self.newRoiDlg.exec()
         if self.newRoiDlg.result() == QDialog.Accepted:
             md = self.metadatas[self._mdIndex][0]
-            self.saver.saveNewRoi(roiName, self.newRoiDlg.number, np.array(verts), shape, md)
+            self._saveNewRoi(roiName, self.newRoiDlg.number, np.array(verts), shape, md)
         self.selector.setActive(True)  # Start the next roiFile.
+
+    def _saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
+            roi = pwsdt.Roi.fromVerts(verts, datashape)
+            try:
+                roiFile = acq.saveRoi(name, num, roi)
+                self._handleRoiSaving(acq, roiFile, False)
+            except OSError:
+                ans = QMessageBox.question(self.anViewer, 'Overwrite?',
+                                           f"Roi {roi.name}:{roi.number} already exists. Overwrite?")
+                if ans == QMessageBox.Yes:
+                    roiFile = acq.saveRoi(name, num, roi, overwrite=True)
+                    self._handleRoiSaving(acq, roiFile, True)
 
     def handleButtons(self, button):
         if button is self.lassoButton and self.lastButton_ is not button:
@@ -179,13 +188,13 @@ class RoiDrawer(QWidget):
             self.adjustButton.setEnabled(False)
         self.lastButton_ = button
 
-    def _handleRoiSaving(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, overwrite: bool):
+    def _handleRoiSaving(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile, overwrite: bool):
         if overwrite:
             self.anViewer.showRois()  # Refresh all rois since we just deleted one as well.
         else:
-            self.anViewer.addRoi(roi)
+            self.anViewer.addRoi(roiFile)
         self.anViewer.canvas.draw_idle()
-        self.roiCreated.emit(acq, roi, overwrite)
+        self.roiCreated.emit(acq, roiFile, overwrite)
 
     def _updateDisplayedCell(self, idx: int):
         currRoi = self.anViewer.roiFilter.currentText() #Since the next cell we look at will likely not have rois of the current name we want to manually force the ROI name to stay the same.
@@ -211,7 +220,7 @@ class RoiDrawer(QWidget):
         raise IndexError(f"Acquisition {acq} was not found in the list of available images.")
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        self.selector.setActive(False) #This cleans up remaining resources of the selector widgets.
+        self.selector.setActive(False)  # This cleans up remaining resources of the selector widgets.
         super().closeEvent(a0)
 
 
@@ -271,12 +280,9 @@ class RoiSaverController(QObject):
             acq.saveRoi(roi)
             self.roiCreated.emit(acq, roi, False)
         except OSError:
-            self._overWriteRoi(acq, roi)
+            ans = QMessageBox.question(self.anViewer, 'Overwrite?',
+                                       f"Roi {roi.name}:{roi.number} already exists. Overwrite?")
+            if ans == QMessageBox.Yes:
+                acq.saveRoi(roi, overwrite=True)
+                self.roiCreated.emit(acq, roi, True)
 
-    def _overWriteRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi):
-        """If the worker raised an `OSError` then we need to ask the user if they want to overwrite."""
-        ans = QMessageBox.question(self.anViewer, 'Overwrite?',
-                                   f"Roi {roi.name}:{roi.number} already exists. Overwrite?")
-        if ans == QMessageBox.Yes:
-            acq.saveRoi(roi, overwrite=True)
-            self.roiCreated.emit(acq, roi, True)
