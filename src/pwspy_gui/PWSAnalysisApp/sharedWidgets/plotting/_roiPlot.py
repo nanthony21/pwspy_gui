@@ -120,9 +120,7 @@ class RoiPlot(QWidget):
                 self.roiFilter.setCurrentIndex(i)
                 break
 
-    def _setRoiSelected(self, roiParam: RoiParams, exclusive: bool):
-        if exclusive:
-            self._setAllRoisSelected(False)  # Deselect all previously selected ROIs
+    def _setRoiSelected(self, roiParam: RoiParams):
         roiParam.selected = True
         roiParam.polygon.set_edgecolor((0, 1, 1, 0.9))  # Highlight selected rois.
         roiParam.polygon.set_linewidth(2)
@@ -223,89 +221,14 @@ class RoiPlot(QWidget):
             selectedROIParam = None  # No Roi was clicked
 
         if event.button == 1:  # Left click
-            if selectedROIParam is None:  # Didn't click on an ROI
+            exclusive = not (Qt.ControlModifier & QApplication.keyboardModifiers())  # If control isn't being pressed then change to only select this one ROI. the QApplication method returns a bitmask of Qt.KeyboardModifiers
+            if exclusive:
                 self._setAllRoisSelected(False)
-            else:
-                exclusive = not (Qt.ControlModifier & QApplication.keyboardModifiers())  # If control isn't being pressed then change to only select this one ROI. the QApplication method returns a bitmask of Qt.KeyboardModifiers
-                self._setRoiSelected(selectedROIParam, exclusive=exclusive)
+            if selectedROIParam is not None:  # Didn't click on an ROI
+                self._setRoiSelected(selectedROIParam)
             self._plotWidget.canvas.draw_idle()
         if event.button == 3:  # "3" is the right button
-            # Actions that can happen even if no ROI was clicked on.
-            def deleteFunc():
-                self.removeRois([param.roiFile for param in self.rois if param.selected])
-
-            def moveFunc():
-                coordSet = []
-                selectedROIParams = []
-                for param in self.rois:
-                    if param.selected:
-                        selectedROIParams.append(param)
-                        coordSet.append(param.roiFile.getRoi().verts)
-
-                def done(vertsSet, handles):
-                    self._polyWidg.set_active(False)
-                    self._polyWidg.set_visible(False)
-                    for param, verts in zip(selectedROIParams, vertsSet):
-                        newRoi = pwsdt.Roi.fromVerts(np.array(verts),
-                                               param.roiFile.getRoi().mask.shape)
-                        self.updateRoi(param.roiFile, newRoi)
-                    self.enableHoverAnnotation(True)
-
-                def cancelled():
-                    self.enableHoverAnnotation(True)
-
-                self.enableHoverAnnotation(False)  # This should be reenabled when the widget is finished or cancelled.
-                self._polyWidg = MovingModifier(self.ax, onselect=done, onCancelled=cancelled)
-                self._polyWidg.set_active(True)
-                self._polyWidg.initialize(coordSet)
-
-            def selectAllFunc():
-                sel = not any([param.selected for param in self.rois])  # Determine whether to select or deselect all
-                self._setAllRoisSelected(sel)
-                self._plotWidget.canvas.draw_idle()
-
-            popMenu = QMenu(self)
-            deleteAction = popMenu.addAction("Delete Selected ROIs", deleteFunc)
-            moveAction = popMenu.addAction("Move Selected ROIs", moveFunc)
-            selectAllAction = popMenu.addAction("De/Select All", selectAllFunc)
-
-            if not any([roiParam.selected for roiParam in self.rois]):  # If no rois are selected then some actions can't be performed
-                deleteAction.setEnabled(False)
-                moveAction.setEnabled(False)
-
-            moveAction.setToolTip(MovingModifier.getHelpText())
-            popMenu.setToolTipsVisible(True)
-
-            if selectedROIParam is not None:
-                # Actions that require that a ROI was clicked on.
-                def editFunc():
-                    # extract handle points from the polygon
-                    poly = shapelyPolygon(selectedROIParam.roiFile.getRoi().verts)
-                    poly = poly.buffer(0)
-                    poly = poly.simplify(poly.length ** .5 / 5, preserve_topology=False)
-                    handles = poly.exterior.coords
-
-                    def done(verts, handles):
-                        verts = verts[0]
-                        newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.getRoi().mask.shape)
-                        self._polyWidg.set_active(False)
-                        self._polyWidg.set_visible(False)
-                        self.updateRoi(selectedROIParam.roiFile, newRoi)
-                        self.enableHoverAnnotation(True)
-
-                    def cancelled():
-                        self.enableHoverAnnotation(True)
-
-                    self._polyWidg = PolygonModifier(self.ax, onselect=done, onCancelled=cancelled)
-                    self._polyWidg.set_active(True)
-                    self.enableHoverAnnotation(False)
-                    self._polyWidg.initialize([handles])
-
-                popMenu.addSeparator()
-                popMenu.addAction("Modify", editFunc)
-
-            cursor = QCursor()
-            popMenu.popup(cursor.pos())
+            self._showRightClickMenu()
 
     def _addPolygonForRoi(self, roiFile: pwsdt.RoiFile):
         roi = roiFile.getRoi()
@@ -340,6 +263,90 @@ class RoiPlot(QWidget):
         act.triggered.connect(showSinCityDlg)
         menu.addAction(act)
         menu.exec(self.mapToGlobal(self.exportButton.pos()))
+
+    def _showRightClickMenu(self, selectedROIParam: RoiParams):
+        """
+
+        Args:
+         selectedROIParam: The ROI params associated with the ROI that was clicked on.
+        """
+        # Actions that can happen even if no ROI was clicked on.
+        def deleteFunc():
+            self.removeRois([param.roiFile for param in self.rois if param.selected])
+
+        def moveFunc():
+            coordSet = []
+            selectedROIParams = []
+            for param in self.rois:
+                if param.selected:
+                    selectedROIParams.append(param)
+                    coordSet.append(param.roiFile.getRoi().verts)
+
+            def done(vertsSet, handles):
+                self._polyWidg.set_active(False)
+                self._polyWidg.set_visible(False)
+                for param, verts in zip(selectedROIParams, vertsSet):
+                    newRoi = pwsdt.Roi.fromVerts(np.array(verts),
+                                                 param.roiFile.getRoi().mask.shape)
+                    self.updateRoi(param.roiFile, newRoi)
+                self.enableHoverAnnotation(True)
+
+            def cancelled():
+                self.enableHoverAnnotation(True)
+
+            self.enableHoverAnnotation(False)  # This should be reenabled when the widget is finished or cancelled.
+            self._polyWidg = MovingModifier(self.ax, onselect=done, onCancelled=cancelled)
+            self._polyWidg.set_active(True)
+            self._polyWidg.initialize(coordSet)
+
+        def selectAllFunc():
+            sel = not any([param.selected for param in self.rois])  # Determine whether to select or deselect all
+            self._setAllRoisSelected(sel)
+            self._plotWidget.canvas.draw_idle()
+
+        popMenu = QMenu(self)
+        deleteAction = popMenu.addAction("Delete Selected ROIs", deleteFunc)
+        moveAction = popMenu.addAction("Move Selected ROIs", moveFunc)
+        selectAllAction = popMenu.addAction("De/Select All", selectAllFunc)
+
+        if not any([roiParam.selected for roiParam in
+                    self.rois]):  # If no rois are selected then some actions can't be performed
+            deleteAction.setEnabled(False)
+            moveAction.setEnabled(False)
+
+        moveAction.setToolTip(MovingModifier.getHelpText())
+        popMenu.setToolTipsVisible(True)
+
+        if selectedROIParam is not None:
+            # Actions that require that a ROI was clicked on.
+            def editFunc():
+                # extract handle points from the polygon
+                poly = shapelyPolygon(selectedROIParam.roiFile.getRoi().verts)
+                poly = poly.buffer(0)
+                poly = poly.simplify(poly.length ** .5 / 5, preserve_topology=False)
+                handles = poly.exterior.coords
+
+                def done(verts, handles):
+                    verts = verts[0]
+                    newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.getRoi().mask.shape)
+                    self._polyWidg.set_active(False)
+                    self._polyWidg.set_visible(False)
+                    self.updateRoi(selectedROIParam.roiFile, newRoi)
+                    self.enableHoverAnnotation(True)
+
+                def cancelled():
+                    self.enableHoverAnnotation(True)
+
+                self._polyWidg = PolygonModifier(self.ax, onselect=done, onCancelled=cancelled)
+                self._polyWidg.set_active(True)
+                self.enableHoverAnnotation(False)
+                self._polyWidg.initialize([handles])
+
+            popMenu.addSeparator()
+            popMenu.addAction("Modify", editFunc)
+
+        cursor = QCursor()
+        popMenu.popup(cursor.pos())
 
 class WhiteSpaceValidator(QValidator):
     stateChanged = QtCore.pyqtSignal(QValidator.State)
