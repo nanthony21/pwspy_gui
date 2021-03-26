@@ -152,25 +152,20 @@ class RoiPlot(QWidget):
                     logger.exception(e)
         self._plotWidget.canvas.draw_idle()
 
-    def _addPolygonForRoi(self, roiFile: pwsdt.RoiFile):
-        roi = roiFile.getRoi()
-        if roi.verts is not None:
-            poly = roi.getBoundingPolygon()
-            poly.set_picker(0)  # allow the polygon to trigger a pickevent
-            self._plotWidget.ax.add_patch(poly)
-            self.rois.append(RoiParams(roiFile, poly, False))
-
     # API to wrap RoiManager functionality so we don't expose it publicly
     def removeRois(self, roiFiles: typing.Sequence[pwsdt.RoiFile]):
         for roiFile in roiFiles:
             self._roiManager.removeRoi(roiFile)
             self.roiDeleted.emit(self.metadata, roiFile)
-        self.showRois()  # TODO make more efficient
+            self._removePolygonForRoi(roiFile)
+        self._plotWidget.canvas.draw_idle()
 
     def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
         self._roiManager.updateRoi(roiFile, roi)
         self.roiModified.emit(self.metadata, roiFile)
-        self.showRois()  # Refresh all rois since we just deleted one as well.  # TODO Make more efficient
+        self._removePolygonForRoi(roiFile)
+        self._addPolygonForRoi(roiFile)
+        self._plotWidget.canvas.draw_idle()
 
     def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int) -> pwsdt.RoiFile:
         roiFile = self._roiManager.createRoi(acq, roi, roiName, roiNumber)
@@ -297,6 +292,25 @@ class RoiPlot(QWidget):
 
             cursor = QCursor()
             popMenu.popup(cursor.pos())
+
+    def _addPolygonForRoi(self, roiFile: pwsdt.RoiFile):
+        roi = roiFile.getRoi()
+        if roi.verts is not None:
+            poly = roi.getBoundingPolygon()
+            poly.set_picker(0)  # allow the polygon to trigger a pickevent
+            self._plotWidget.ax.add_patch(poly)
+            self.rois.append(RoiParams(roiFile, poly, False))
+
+    def _removePolygonForRoi(self, roiFile: pwsdt.RoiFile):
+        parm = None
+        for param in self.rois:
+            if param.roiFile is roiFile:
+                param.polygon.remove()
+                parm = param
+        if parm is None:  # No matching roiParam was found, that ain't right.
+            raise ValueError(f"RoiPlot did not find a RoiParam matching RoiFile: {roiFile}")
+        else:
+            self.rois.remove(parm)
 
     def _clearRois(self):
         for param in self.rois:
