@@ -24,7 +24,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from matplotlib import patches
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
-from matplotlib.patches import Polygon
+from matplotlib.patches import PathPatch
 import numpy as np
 from PyQt5.QtGui import QCursor, QValidator
 from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout, QApplication
@@ -34,12 +34,14 @@ from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._roiManager import _DefaultROIManager
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._sinCityExporter import SinCityDlg
+import descartes
 
+# TODO add right click copy/paste.
 
 @dataclass
 class RoiParams:
     roiFile: pwsdt.RoiFile
-    polygon: Polygon
+    polygon: PathPatch
     selected: bool
 
 
@@ -184,8 +186,8 @@ class RoiPlot(QWidget):
         return self._roiManager.getROI(acq, roiName, roiNum)
 
     def _hoverCallback(self, event):  # Show an annotation about the ROI when the mouse hovers over it.
-        def update_annot(roiFile: pwsdt.RoiFile, poly: Polygon):
-            self.annot.xy = poly.xy.mean(axis=0)  # Set the location to the center of the polygon.
+        def update_annot(roiFile: pwsdt.RoiFile, poly: PathPatch):
+            self.annot.xy = poly.get_path().vertices.mean(axis=0)  # Set the location to the center of the polygon.
             text = f"{roiFile.name}, {roiFile.number}"
             if self.metadata.pws:  # A day may come where fluorescence is not taken on the same camera as pws, in this case we will have multiple pixel sizes and ROI handling will need an update. for now just assume we'll use PWS pixel size
                 if self.metadata.pws.pixelSizeUm:  # For some systems (nanocytomics) this is None
@@ -243,7 +245,7 @@ class RoiPlot(QWidget):
     def _addPolygonForRoi(self, roiFile: pwsdt.RoiFile):
         roi = roiFile.getRoi()
         if roi.verts is not None:
-            poly = patches.Polygon(roi.verts, facecolor=(1, 0, 0, 0.5), linewidth=1, edgecolor=(0, 1, 0, 0.9))
+            poly: PathPatch = descartes.PolygonPatch(roi.polygon, facecolor=(1, 0, 0, 0.5), linewidth=1, edgecolor=(0, 1, 0, 0.9))
             poly.set_picker(0)  # allow the polygon to trigger a pickevent
             self._plotWidget.ax.add_patch(poly)
             self.rois.append(RoiParams(roiFile, poly, False))
