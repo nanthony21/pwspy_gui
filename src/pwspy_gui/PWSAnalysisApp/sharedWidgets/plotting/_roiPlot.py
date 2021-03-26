@@ -256,7 +256,7 @@ class RoiPlot(QWidget):
             popMenu.setToolTipsVisible(True)
 
             if selectedROIParam is not None:
-                #Actions that require that a ROI was clicked on.
+                # Actions that require that a ROI was clicked on.
                 def editFunc():
                     # extract handle points from the polygon
                     poly = shapelyPolygon(selectedROIParam.roiFile.getRoi().verts)
@@ -266,12 +266,12 @@ class RoiPlot(QWidget):
 
                     def done(verts, handles):
                         verts = verts[0]
-                        newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.mask.shape)
-                        self._roiManager.updateRoi(param.roiFile, newRoi)
+                        newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.getRoi().mask.shape)
+                        self._roiManager.updateRoi(selectedROIParam.roiFile, newRoi)
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
                         self.enableHoverAnnotation(True)
-                        self.roiModified.emit(self.metadata, param.roiFile)
+                        self.roiModified.emit(self.metadata, selectedROIParam.roiFile)
                         self.showRois()
 
                     def cancelled():

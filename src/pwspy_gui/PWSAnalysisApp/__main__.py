@@ -98,10 +98,10 @@ def main():
         app = PWSApp(sys.argv)
         logger.debug("Finished constructing `PWSApp`")
         #Testing script
-        # app.changeDirectory(r'\\backmanlabnas.myqnapcloud.com\home\Year3\zstack_focusSensitivity\again', False)
-        # app.setSelectedCells([app.getLoadedCells()[0]])
-        # app.plotSelectedCells()
-        # app.window.plots._startRoiDrawing()
+        app.changeDirectory(r'\\backmanlabnas.myqnapcloud.com\home\Year3\zstack_focusSensitivity\again', False)
+        app.setSelectedCells([app.getLoadedCells()[0]])
+        app.plotSelectedCells()
+        app.window.plots._startRoiDrawing()
 
         # import qdarkstyle
         # dark_stylesheet = qdarkstyle.load_stylesheet_pyqt5()
