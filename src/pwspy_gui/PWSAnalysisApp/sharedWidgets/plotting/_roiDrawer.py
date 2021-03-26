@@ -62,8 +62,8 @@ class RoiDrawer(QWidget):
 
         self._mdIndex = 0
         self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField)
-        self.anViewer.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
-        self.anViewer.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
+        self.anViewer.roiPlot.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
+        self.anViewer.roiPlot.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
 
         self.newRoiDlg = NewRoiDlg(self)
 
@@ -121,12 +121,12 @@ class RoiDrawer(QWidget):
         layout.addWidget(self.nextButton, 0, 7, 1, 1)
         layout.addWidget(self.anViewer, 1, 0, 8, 8)
         self.setLayout(layout)
-        self.selector: AdjustableSelector = AdjustableSelector(self.anViewer.ax, self.anViewer.im, LassoCreator, onfinished=self.finalizeRoi, onPolyTuningCancelled=lambda: self.selector.setActive(True))
+        self.selector: AdjustableSelector = AdjustableSelector(self.anViewer.roiPlot.ax, self.anViewer.roiPlot.im, LassoCreator, onfinished=self.finalizeRoi, onPolyTuningCancelled=lambda: self.selector.setActive(True))
         self.handleButtons(self.noneButton)  # Helps initialize state
         self.show()
 
     def finalizeRoi(self, verts: np.ndarray):
-        roiName = self.anViewer.roiFilter.currentText()
+        roiName = self.anViewer.roiPlot.roiFilter.currentText()
         if roiName == '':
             QMessageBox.information(self, 'Wait', 'Please type an ROI name into the box at the top of the screen.')
             self.selector.setActive(True)
@@ -142,32 +142,32 @@ class RoiDrawer(QWidget):
     def _saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
         roi = pwsdt.Roi.fromVerts(verts, datashape)
         try:
-            roiFile = self.anViewer.roiManager.createRoi(acq, roi, name, num)
-            self._handleRoiSaving(acq, roiFile, False)
+            roiFile = self.anViewer.roiPlot.createRoi(acq, roi, name, num)
+            self.roiCreated.emit(acq, roiFile, False)
         except OSError:
             ans = QMessageBox.question(self.anViewer, 'Overwrite?',
                                        f"Roi {name}:{num} already exists. Overwrite?")
             if ans == QMessageBox.Yes:
-                roiFile = self.anViewer.roiManager.getROI(acq, name, num)
-                self.anViewer.roiManager.updateRoi(roiFile, roi)
-                self._handleRoiSaving(acq, roiFile, True)
+                roiFile = self.anViewer.roiPlot.getROI(acq, name, num)
+                self.anViewer.roiPlot.updateRoi(roiFile, roi)
+                self.roiCreated.emit(acq, roiFile, True)
 
     def handleButtons(self, button):
         if button is self.lassoButton and self.lastButton_ is not button:
             self.selector.setSelector(LassoCreator)
             self.selector.setActive(True)
-            self.anViewer.enableHoverAnnotation(False)
+            self.anViewer.roiPlot.enableHoverAnnotation(False)
             self.adjustButton.setEnabled(True)
         elif button is self.ellipseButton and self.lastButton_ is not button:
             self.selector.setSelector(EllipseCreator)
             self.selector.setActive(True)
-            self.anViewer.enableHoverAnnotation(False)
+            self.anViewer.roiPlot.enableHoverAnnotation(False)
             self.adjustButton.setEnabled(True)
         elif button is self.paintButton:
             def setSelector(sel):
                 self.selector.setSelector(sel)
                 self.selector.setActive(True)
-                self.anViewer.enableHoverAnnotation(False)
+                self.anViewer.roiPlot.enableHoverAnnotation(False)
                 self.adjustButton.setEnabled(True)
 
             menu = QMenu(self)
@@ -185,24 +185,16 @@ class RoiDrawer(QWidget):
         elif button is self.noneButton and self.lastButton_ is not button:
             if self.selector is not None:
                 self.selector.setActive(False)
-            self.anViewer.enableHoverAnnotation(True)
+            self.anViewer.roiPlot.enableHoverAnnotation(True)
             self.adjustButton.setEnabled(False)
         self.lastButton_ = button
 
-    def _handleRoiSaving(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile, overwrite: bool):
-        if overwrite:
-            self.anViewer.showRois()  # Refresh all rois since we just deleted one as well.
-        else:
-            self.anViewer.addRoi(roiFile)
-        self.anViewer.canvas.draw_idle()
-        self.roiCreated.emit(acq, roiFile, overwrite)
-
     def _updateDisplayedCell(self, idx: int):
-        currRoi = self.anViewer.roiFilter.currentText() #Since the next cell we look at will likely not have rois of the current name we want to manually force the ROI name to stay the same.
+        currRoi = self.anViewer.roiPlot.roiFilter.currentText()  # Since the next cell we look at will likely not have rois of the current name we want to manually force the ROI name to stay the same.
         md, analysis = self.metadatas[idx]
         self.anViewer.setMetadata(md, analysis=analysis)
-        self.anViewer.roiFilter.setEditText(currRoi) #manually force the ROI name to stay the same.
-        self.selector.reset() #Make sure to get rid of all rois
+        self.anViewer.roiPlot.roiFilter.setEditText(currRoi)  # manually force the ROI name to stay the same.
+        self.selector.reset()  # Make sure to get rid of all rois
         self.setWindowTitle(f"Roi Drawer - {os.path.split(md.filePath)[-1]}")
         self.metadataChanged.emit(md)
         self._mdIndex = idx
@@ -256,8 +248,8 @@ class NewRoiDlg(QDialog):
         super().reject()
 
     def show(self) -> None:
-        if len(self.parent.anViewer.rois) > 0:
-            roiParams = self.parent.anViewer.rois
+        if len(self.parent.anViewer.roiPlot.rois) > 0:
+            roiParams = self.parent.anViewer.roiPlot.rois
             newNum = max([param.roiFile.number for param in roiParams]) + 1  # Set the box 1 number abox the maximum found
             self.numBox.setValue(newNum)
         else:
