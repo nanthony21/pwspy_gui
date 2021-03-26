@@ -34,7 +34,9 @@ from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._sinCityExporter import SinCityDlg
-
+from cachetools import cachedmethod, LRUCache
+from threading import Lock
+import os
 
 @dataclass
 class RoiParams:
@@ -68,20 +70,34 @@ class ROIManager(abc.ABC):
 
 
 class _DefaultROIManager(ROIManager):  # TODO LRU cache
+    def __init__(self):
+        self._cache = LRUCache(maxsize=2048)  # Store this many ROIs at once
+        self._cacheLock = Lock()
+
+    @staticmethod
+    def _getCacheKey(roiFile: pwsdt.RoiFile):
+        return os.path.split(roiFile.filePath)[0], roiFile.name, roiFile.number
+
     def removeRoi(self, roiFile: pwsdt.RoiFile):
         roiFile.delete()
+        self._cache.pop(self._getCacheKey(roiFile))
 
     def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
         roiFile.update(roi)
+        self._cache[self._getCacheKey(roiFile)] = roiFile
 
     def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int):
-        return acq.saveRoi(roiName, roiNumber, roi)
+        roiFile = acq.saveRoi(roiName, roiNumber, roi)
+        self._cache[self._getCacheKey(roiFile)] = roiFile
+        return roiFile
 
+    @cachedmethod(lambda self: self._cache, key=lambda acq, roiName, roiNum: (acq.filePath, roiName, roiNum), lock=lambda self: self._cacheLock)  # Cache results # TODO update cache when roi is saved, created, etc.
     def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
+        print(self._cache.currsize)
         return acq.loadRoi(roiName, roiNum)
 
     def close(self):
-        pass
+        self._cache.clear()
 
 
 class RoiPlot(QWidget):
@@ -127,6 +143,9 @@ class RoiPlot(QWidget):
         self.enableHoverAnnotation(True)
 
         self._roiManager = _DefaultROIManager()
+
+    def __del__(self):
+        self._roiManager.close()
 
     def getImageData(self) -> np.ndarray:
         return self._plotWidget.data
