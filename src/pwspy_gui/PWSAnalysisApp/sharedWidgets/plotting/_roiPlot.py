@@ -16,14 +16,11 @@
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
 from __future__ import annotations
 import abc
-import enum
 import logging
-import os
 import re
 import typing
 from dataclasses import dataclass
 
-import matplotlib
 from PyQt5.QtCore import pyqtSignal
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
@@ -31,59 +28,69 @@ from matplotlib.image import AxesImage
 from matplotlib.patches import  Polygon
 import numpy as np
 from PyQt5.QtGui import QCursor, QValidator
-from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QDialog, QWidget, QGridLayout, QSpinBox, QDoubleSpinBox, \
-    QMessageBox, QVBoxLayout
+from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout
 from PyQt5 import QtCore
-from matplotlib.backends.backend_qt5 import NavigationToolbar2QT
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
-from pwspy.dataTypes import Roi, AcqDir
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
-from pwspy.utility.plotting.roiColor import roiColor
 import pwspy.dataTypes as pwsdt
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._sinCityExporter import SinCityDlg
+
 
 @dataclass
 class RoiParams:
-    roi: Roi
+    roiFile: pwsdt.RoiFile
     overlay: AxesImage
     polygon: Polygon
     selected: bool
 
 
 class ROIManager(abc.ABC):
-    class Actions(enum.Enum):
-        DELETE = enum.auto()
-        MODIFY = enum.auto()
-        CREATE = enum.auto()
 
     @abc.abstractmethod
-    def handleROIEvent(self, action: ROIManager.Actions, acq: pwsdt.AcqDir, roi: pwsdt.Roi):
+    def removeRoi(self, roiFile: pwsdt.RoiFile):
         pass
 
     @abc.abstractmethod
-    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.Roi:
+    def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
+        pass
+
+    @abc.abstractmethod
+    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int):
+        pass
+
+    @abc.abstractmethod
+    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
+        pass
+
+    @abc.abstractmethod
+    def close(self):
+        """Make sure all files are wrapped up"""
         pass
 
 
-class _DefualtROIManager(ROIManager): # TODO LRU cache
-    def handleROIEvent(self, action: ROIManager.Actions, acq: pwsdt.AcqDir, roi: pwsdt.Roi):
-        if action == self.Actions.MODIFY:
-            roi.toHDF(acq.filePath, overwrite=True)
-        elif action == self.Actions.DELETE:
-            roi.deleteRoi(os.path.split(roi.filePath)[0], roi.name, roi.number)
-        elif action == self.Actions.CREATE:
-            roi.toHDF(acq.filePath, overwrite=False)
+class _DefaultROIManager(ROIManager):  # TODO LRU cache
+    def removeRoi(self, roiFile: pwsdt.RoiFile):
+        roiFile.delete()
 
-    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.Roi:
+    def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
+        roiFile.update(roi)
+
+    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int):
+        acq.saveRoi(roiName, roiNumber, roi)
+
+    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
         return acq.loadRoi(roiName, roiNum)
+
+    def close(self):
+        pass
 
 
 class RoiPlot(QWidget):
     """Adds GUI handling for ROIs."""
-    roiDeleted = pyqtSignal(AcqDir, Roi)
-    roiModified = pyqtSignal(AcqDir, Roi)
+    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
+    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
 
-    def __init__(self, acqDir: AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
+    def __init__(self, acqDir: pwsdt.AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
             super().__init__(parent, flags=flags)
         else:
@@ -119,10 +126,11 @@ class RoiPlot(QWidget):
         self._toggleCids = None
         self.enableHoverAnnotation(True)
 
-        self._roiManager = _DefualtROIManager()
+        self._roiManager = _DefaultROIManager()
 
     def getImageData(self) -> np.ndarray:
         return self._plotWidget.data
+
     def setRoiPlotMetadata(self, metadata: AcqDir):
         """Refresh the ROIs based on a new metadata. Also needs to be provided with the data for the image to display."""
         self.metadata = metadata
@@ -131,8 +139,8 @@ class RoiPlot(QWidget):
         # updateFilter
         try:
             self.roiFilter.currentIndexChanged.disconnect()  # Without this line the roiFilter.clear() line is very slow.
-        except:
-            pass #if the signal hasn't yet been connected we'll get an error. ignore it.
+        except Exception:
+            pass  # if the signal hasn't yet been connected we'll get an error. ignore it.
         self.roiFilter.clear()
         self.roiFilter.addItem(' ')
         self.roiFilter.addItem('.*')
@@ -161,7 +169,7 @@ class RoiPlot(QWidget):
                 contained, _ = params.polygon.contains(event)
                 if contained:
                     if not vis:
-                        update_annot(params.roi, params.polygon)
+                        update_annot(params.roiFile, params.polygon)
                         self.annot.set_visible(True)
                         self._plotWidget.canvas.draw_idle()
                     return
@@ -169,8 +177,8 @@ class RoiPlot(QWidget):
                 self.annot.set_visible(False)
                 self._plotWidget.canvas.draw_idle()
 
-    def setRoiSelected(self, roi: Roi, selected: bool):
-        param = [param for param in self.rois if roi is param.roi][0]
+    def setRoiSelected(self, roi: pwsdt.Roi, selected: bool):
+        param = [param for param in self.rois if roi is param.roiFile][0]
         param.selected = selected
         if selected:
             param.polygon.set_edgecolor((0, 1, 1, 0.9))  # Highlight selected rois.
@@ -191,15 +199,15 @@ class RoiPlot(QWidget):
             selectedROIParam = None #No Roi was clicked
 
         if event.button == 1 and selectedROIParam is not None: #Left click
-            self.setRoiSelected(selectedROIParam.roi, not selectedROIParam.selected)
+            self.setRoiSelected(selectedROIParam.roiFile, not selectedROIParam.selected)
             self._plotWidget.canvas.draw_idle()
         if event.button == 3:  # "3" is the right button
             #Actions that can happen even if no ROI was clicked on.
             def deleteFunc():
                 for param in self.rois:
                     if param.selected:
-                        self._roiManager.handleROIEvent(self._roiManager.Actions.DELETE, self.metadata, param.roi)
-                        self.roiDeleted.emit(self.metadata, param.roi)
+                        self._roiManager.handleROIEvent(self._roiManager.Actions.DELETE, self.metadata, param.roiFile)
+                        self.roiDeleted.emit(self.metadata, param.roiFile)
                 self.showRois()
 
             def moveFunc():
@@ -208,12 +216,12 @@ class RoiPlot(QWidget):
                 for param in self.rois:
                     if param.selected:
                         selectedROIParams.append(param)
-                        coordSet.append(param.roi.verts)
+                        coordSet.append(param.roiFile.verts)
 
                 def done(vertsSet, handles):
                     for param, verts in zip(selectedROIParams, vertsSet):
-                        newRoi = Roi.fromVerts(param.roi.name, param.roi.number, np.array(verts),
-                                               param.roi.mask.shape)
+                        newRoi = pwsdt.Roi.fromVerts(param.roiFile.name, param.roiFile.number, np.array(verts),
+                                               param.roiFile.mask.shape)
                         self._roiManager.handleROIEvent(self._roiManager.Actions.MODIFY, self.metadata, newRoi)
                         self.roiModified.emit(self.metadata, newRoi)
                     self._polyWidg.set_active(False)
@@ -224,7 +232,7 @@ class RoiPlot(QWidget):
                 def cancelled():
                     self.enableHoverAnnotation(True)
 
-                self.enableHoverAnnotation(False) #This should be reenabled when the widget is finished or cancelled.
+                self.enableHoverAnnotation(False)  # This should be reenabled when the widget is finished or cancelled.
                 self._polyWidg = MovingModifier(self.ax, onselect=done, onCancelled=cancelled)
                 self._polyWidg.set_active(True)
                 self._polyWidg.initialize(coordSet)
@@ -232,7 +240,7 @@ class RoiPlot(QWidget):
             def selectAllFunc():
                 sel = not any([param.selected for param in self.rois])  # Determine whether to selece or deselect all
                 for param in self.rois:
-                    self.setRoiSelected(param.roi, sel)
+                    self.setRoiSelected(param.roiFile, sel)
                 self._plotWidget.canvas.draw_idle()
 
             popMenu = QMenu(self)
@@ -251,14 +259,14 @@ class RoiPlot(QWidget):
                 #Actions that require that a ROI was clicked on.
                 def editFunc():
                     # extract handle points from the polygon
-                    poly = shapelyPolygon(selectedROIParam.roi.verts)
+                    poly = shapelyPolygon(selectedROIParam.roiFile.verts)
                     poly = poly.buffer(0)
                     poly = poly.simplify(poly.length ** .5 / 5, preserve_topology=False)
                     handles = poly.exterior.coords
 
                     def done(verts, handles):
                         verts = verts[0]
-                        newRoi = Roi.fromVerts(selectedROIParam.roi.name, selectedROIParam.roi.number, np.array(verts), selectedROIParam.roi.mask.shape)
+                        newRoi = pwsdt.Roi.fromVerts(selectedROIParam.roiFile.name, selectedROIParam.roiFile.number, np.array(verts), selectedROIParam.roiFile.mask.shape)
                         self._roiManager.handleROIEvent(self._roiManager.Actions.MODIFY, self.metadata, newRoi)
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
@@ -309,7 +317,7 @@ class RoiPlot(QWidget):
             param.polygon.remove()
         self.rois = []
 
-    def addRoi(self, roi: Roi):
+    def addRoi(self, roi: pwsdt.Roi):
         if roi.verts is not None:
             poly = roi.getBoundingPolygon()
             poly.set_picker(0)  # allow the polygon to trigger a pickevent
@@ -353,138 +361,6 @@ class WhiteSpaceValidator(QValidator):
 
     def fixup(self, a0: str) -> str:
         return a0.strip()
-
-
-class SinCityDlg(QDialog):
-    def __init__(self, parentRoiPlot: RoiPlot, parent: QWidget = None):
-        super().__init__(parent=parent)
-        # self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowTitleHint | QtCore.Qt.CustomizeWindowHint)  # Get rid of the close button. this is handled by the selector widget active status
-        self.setWindowTitle("Sin City Image Export")
-        self.setModal(False)
-
-        self.parentRoiPlot = parentRoiPlot
-        self.cachedImage = None
-
-        self.fig, self.ax = matplotlib.pyplot.subplots()
-        c = FigureCanvasQTAgg(self.fig)
-        self.plotWidg = QWidget(self)
-        self.plotWidg.setLayout(QVBoxLayout())
-        self.plotWidg.layout().addWidget(c)
-        self.plotWidg.layout().addWidget(NavigationToolbar2QT(c, self))
-
-        self.ax.xaxis.set_visible(False)
-        self.ax.yaxis.set_visible(False)
-        self.im = self.ax.imshow(self.parentRoiPlot.getImageData())
-
-        self._paintDebounce = QtCore.QTimer()  # This timer prevents the selectionChanged signal from firing too rapidly.
-        self._paintDebounce.setInterval(200)
-        self._paintDebounce.setSingleShot(True)
-        self._paintDebounce.timeout.connect(self.paint)
-
-        self.vmin = QDoubleSpinBox(self)
-        self.vmin.setValue(0)
-        self.vmin.setDecimals(3)
-        self.vmin.setMaximum(10000)
-        self.vmin.setSingleStep(0.001)
-        def vminChanged(val):
-            self.stale = True
-            self._paintDebounce.start()
-        self.vmin.valueChanged.connect(vminChanged)
-
-        self.vmax = QDoubleSpinBox(self)
-        self.vmax.setValue(.1)
-        self.vmax.setDecimals(3)
-        self.vmax.setMaximum(10000)
-        self.vmax.setSingleStep(0.001)
-        def vmaxChanged(val):
-            self.stale = True
-            self._paintDebounce.start()
-        self.vmax.valueChanged.connect(vmaxChanged)
-
-        self.scaleBg = QDoubleSpinBox(self)
-        self.scaleBg.setValue(.33)
-        self.scaleBg.setMinimum(0)
-        self.scaleBg.setDecimals(2)
-        self.scaleBg.setMaximum(3)
-        self.scaleBg.setSingleStep(0.01)
-        def scaleBgChanged(val):
-            self.stale = True
-            self._paintDebounce.start()
-        self.scaleBg.valueChanged.connect(scaleBgChanged)
-
-        self.hue = QDoubleSpinBox(self)
-        self.hue.setMinimum(0)
-        self.hue.setMaximum(1)
-        self.hue.setValue(0)
-        self.hue.setSingleStep(0.05)
-        def hueRangeChanged(val):
-            self.stale = True
-            self._paintDebounce.start()
-        self.hue.valueChanged.connect(hueRangeChanged)
-
-        self.exp = QDoubleSpinBox(self)
-        self.exp.setMinimum(0.5)
-        self.exp.setMaximum(3)
-        self.exp.setValue(1)
-        self.exp.setSingleStep(0.05)
-        def expRangeChanged(val):
-            self.stale = True
-            self._paintDebounce.start()
-        self.exp.valueChanged.connect(expRangeChanged)
-
-
-        self.scaleBar = QSpinBox(self)
-        self.scaleBar.setValue(0)
-        self.scaleBar.setMaximum(10000)
-        def scaleBarChanged(val):
-            self.stale = True
-            self._paintDebounce.start()
-        self.scaleBar.valueChanged.connect(scaleBarChanged)
-
-        self.refreshButton = QPushButton("Refresh", self)
-
-        def refreshAction():
-            self.stale = True  # Force a full refresh
-            self.paint()
-
-        self.refreshButton.released.connect(refreshAction)
-
-        l = QGridLayout()
-        l.addWidget(QLabel("Minimum Value", self), 0, 0)
-        l.addWidget(self.vmin, 0, 1)
-        l.addWidget(QLabel("Maximum Value", self), 1, 0)
-        l.addWidget(self.vmax, 1, 1)
-        l.addWidget(QLabel("Scale Background", self), 2, 0)
-        l.addWidget(self.scaleBg, 2, 1)
-        l.addWidget(QLabel("Hue", self), 3, 0)
-        l.addWidget(self.hue, 3, 1)
-        l.addWidget(QLabel("Exponent", self), 4, 0)
-        l.addWidget(self.exp, 4, 1)
-        l.addWidget(QLabel("Scale Bar", self), 5, 0)
-        l.addWidget(self.scaleBar, 5, 1)
-        l.addWidget(self.refreshButton, 6, 0)
-        layout = QHBoxLayout()
-        layout.addLayout(l)
-        layout.addWidget(self.plotWidg)
-        self.setLayout(layout)
-
-        self.paint()
-
-    def paint(self):
-        """Refresh the recommended regions. If stale is false then just repaint the cached regions without recalculating."""
-        if self.parentRoiPlot.getImageData() is not self.cachedImage:  # The image has been changed.
-            self.cachedImage = self.parentRoiPlot.getImageData()
-            self.stale = True
-        if self.stale:
-            try:
-                rois = [parm.roi for parm in self.parentRoiPlot.rois]
-                data = roiColor(self.parentRoiPlot.getImageData(), rois, self.vmin.value(), self.vmax.value(), self.scaleBg.value(), hue=self.hue.value(), exponent=self.exp.value(), numScaleBarPix=self.scaleBar.value())
-                self.im.set_data(data)
-                self.fig.canvas.draw_idle()
-                self.stale = False
-            except Exception as e:
-                msg = QMessageBox.information(self, "Error", f"Warning: Sin City export failed with error: {str(e)}")
-                return
 
 
 if __name__ == '__main__':

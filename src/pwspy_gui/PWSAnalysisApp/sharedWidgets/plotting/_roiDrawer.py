@@ -47,9 +47,9 @@ class RoiDrawer(QWidget):
     Args:
         metadatas: A list of pwspy AcquisitionDirectory `AcqDir` objects paired with optional analysis results objects for that acquisition.
     """
-    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # Fired when a roi is created
-    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
-    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi)
+    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile, bool)  # Fired when a roi is created
+    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
+    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
     metadataChanged = pyqtSignal(pwsdt.AcqDir)
 
     def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window,
@@ -248,7 +248,7 @@ class NewRoiDlg(QDialog):
     def show(self) -> None:
         if len(self.parent.anViewer.rois) > 0:
             roiParams = self.parent.anViewer.rois
-            newNum = max([param.roi.number for param in roiParams]) + 1 #Set the box 1 number abox the maximum found
+            newNum = max([param.roiFile.number for param in roiParams]) + 1 #Set the box 1 number abox the maximum found
             self.numBox.setValue(newNum)
         else:
             self.numBox.setValue(0) #start at 0
@@ -263,7 +263,7 @@ class RoiSaverController(QObject):
     Args:
         anViewer: A reference to an analysis viewer widget that we draw ROI's on.
     """
-    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # when a new roi is created, includes overwrites. (The acquisition, the ROI object, whether this was an overwrite)
+    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # when a new roiFile is created, includes overwrites. (The acquisition, the ROI object, whether this was an overwrite)
 
     def saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
         roi = pwsdt.Roi.fromVerts(name, num, verts, datashape)
