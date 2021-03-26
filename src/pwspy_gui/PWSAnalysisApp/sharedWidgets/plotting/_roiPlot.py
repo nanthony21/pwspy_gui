@@ -72,7 +72,6 @@ class ROIManager(abc.ABC):
 class _DefaultROIManager(ROIManager):  # TODO LRU cache
     def __init__(self):
         self._cache = LRUCache(maxsize=2048)  # Store this many ROIs at once
-        self._cacheLock = Lock()
 
     @staticmethod
     def _getCacheKey(roiFile: pwsdt.RoiFile):
@@ -91,7 +90,7 @@ class _DefaultROIManager(ROIManager):  # TODO LRU cache
         self._cache[self._getCacheKey(roiFile)] = roiFile
         return roiFile
 
-    @cachedmethod(lambda self: self._cache, key=lambda acq, roiName, roiNum: (acq.filePath, roiName, roiNum), lock=lambda self: self._cacheLock)  # Cache results # TODO update cache when roi is saved, created, etc.
+    @cachedmethod(lambda self: self._cache, key=lambda acq, roiName, roiNum: (acq.filePath, roiName, roiNum))  # Cache results # TODO update cache when roi is saved, created, etc.
     def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
         print(self._cache.currsize)
         return acq.loadRoi(roiName, roiNum)
