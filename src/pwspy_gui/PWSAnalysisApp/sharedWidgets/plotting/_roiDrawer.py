@@ -47,13 +47,13 @@ class RoiDrawer(QWidget):
     Args:
         metadatas: A list of pwspy AcquisitionDirectory `AcqDir` objects paired with optional analysis results objects for that acquisition.
     """
-    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile, bool)  # Fired when a roi is created
+    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile, bool)  # Fired when a roi is created. These
     roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
     roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
-    metadataChanged = pyqtSignal(pwsdt.AcqDir)
+    metadataChanged = pyqtSignal(pwsdt.AcqDir)  # The acquisition we are looking at has been switched.
 
     def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window,
-                 title: str = "Roi Drawer 3000", initialField = AnalysisViewer.PlotFields.Thumbnail):
+                 title: str = "Roi Drawer 3000", initialField=AnalysisViewer.PlotFields.Thumbnail):
         QWidget.__init__(self, parent=parent, flags=flags)
         self.setWindowTitle(title)
         self.metadatas = metadatas
@@ -140,16 +140,17 @@ class RoiDrawer(QWidget):
         self.selector.setActive(True)  # Start the next roiFile.
 
     def _saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
-            roi = pwsdt.Roi.fromVerts(verts, datashape)
-            try:
-                roiFile = acq.saveRoi(name, num, roi)
-                self._handleRoiSaving(acq, roiFile, False)
-            except OSError:
-                ans = QMessageBox.question(self.anViewer, 'Overwrite?',
-                                           f"Roi {roi.name}:{roi.number} already exists. Overwrite?")
-                if ans == QMessageBox.Yes:
-                    roiFile = acq.saveRoi(name, num, roi, overwrite=True)
-                    self._handleRoiSaving(acq, roiFile, True)
+        roi = pwsdt.Roi.fromVerts(verts, datashape)
+        try:
+            roiFile = self.anViewer.roiManager.createRoi(acq, roi, name, num)
+            self._handleRoiSaving(acq, roiFile, False)
+        except OSError:
+            ans = QMessageBox.question(self.anViewer, 'Overwrite?',
+                                       f"Roi {name}:{num} already exists. Overwrite?")
+            if ans == QMessageBox.Yes:
+                roiFile = self.anViewer.roiManager.getROI(acq, name, num)
+                self.anViewer.getRoiManager().updateRoi(roiFile, roi)
+                self._handleRoiSaving(acq, roiFile, True)
 
     def handleButtons(self, button):
         if button is self.lassoButton and self.lastButton_ is not button:
@@ -257,32 +258,10 @@ class NewRoiDlg(QDialog):
     def show(self) -> None:
         if len(self.parent.anViewer.rois) > 0:
             roiParams = self.parent.anViewer.rois
-            newNum = max([param.roiFile.number for param in roiParams]) + 1 #Set the box 1 number abox the maximum found
+            newNum = max([param.roiFile.number for param in roiParams]) + 1  # Set the box 1 number abox the maximum found
             self.numBox.setValue(newNum)
         else:
-            self.numBox.setValue(0) #start at 0
+            self.numBox.setValue(0)  # start at 0
         super().show()
 
-
-class RoiSaverController(QObject):
-    """
-    This class used to pass information to a separate process and thread to try to make saving ROIs less disruptive to the UI. It didn't really work.
-    Rois are now much faster to save anyway so this file has been greatly simplified.
-
-    Args:
-        anViewer: A reference to an analysis viewer widget that we draw ROI's on.
-    """
-    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.Roi, bool)  # when a new roiFile is created, includes overwrites. (The acquisition, the ROI object, whether this was an overwrite)
-
-    def saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
-        roi = pwsdt.Roi.fromVerts(name, num, verts, datashape)
-        try:
-            acq.saveRoi(roi)
-            self.roiCreated.emit(acq, roi, False)
-        except OSError:
-            ans = QMessageBox.question(self.anViewer, 'Overwrite?',
-                                       f"Roi {roi.name}:{roi.number} already exists. Overwrite?")
-            if ans == QMessageBox.Yes:
-                acq.saveRoi(roi, overwrite=True)
-                self.roiCreated.emit(acq, roi, True)
 

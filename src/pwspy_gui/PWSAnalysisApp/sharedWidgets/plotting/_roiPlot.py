@@ -46,7 +46,7 @@ class RoiParams:
 
 
 class ROIManager(abc.ABC):
-
+    """Handles the actual file saving and retrieval. Any code using this should only modify ROI files through this manager."""
     @abc.abstractmethod
     def removeRoi(self, roiFile: pwsdt.RoiFile):
         pass
@@ -85,7 +85,7 @@ class _DefaultROIManager(ROIManager):  # TODO LRU cache
         roiFile.update(roi)
         self._cache[self._getCacheKey(roiFile)] = roiFile
 
-    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int):
+    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int) -> pwsdt.RoiFile:
         roiFile = acq.saveRoi(roiName, roiNumber, roi)
         self._cache[self._getCacheKey(roiFile)] = roiFile
         return roiFile
@@ -140,10 +140,10 @@ class RoiPlot(QWidget):
         self._toggleCids = None
         self.enableHoverAnnotation(True)
 
-        self._roiManager = _DefaultROIManager()
+        self.roiManager = _DefaultROIManager()
 
     def __del__(self):
-        self._roiManager.close()
+        self.roiManager.close()
 
     def getImageData(self) -> np.ndarray:
         return self._plotWidget.data
@@ -223,7 +223,7 @@ class RoiPlot(QWidget):
             def deleteFunc():
                 for param in self.rois:
                     if param.selected:
-                        self._roiManager.removeRoi(param.roiFile)
+                        self.roiManager.removeRoi(param.roiFile)
                         self.roiDeleted.emit(self.metadata, param.roiFile)
                 self.showRois()
 
@@ -239,7 +239,7 @@ class RoiPlot(QWidget):
                     for param, verts in zip(selectedROIParams, vertsSet):
                         newRoi = pwsdt.Roi.fromVerts(np.array(verts),
                                                param.roiFile.getRoi().mask.shape)
-                        self._roiManager.updateRoi(param.roiFile, newRoi)
+                        self.roiManager.updateRoi(param.roiFile, newRoi)
                         self.roiModified.emit(self.metadata, param.roiFile)
                     self._polyWidg.set_active(False)
                     self._polyWidg.set_visible(False)
@@ -284,7 +284,7 @@ class RoiPlot(QWidget):
                     def done(verts, handles):
                         verts = verts[0]
                         newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.getRoi().mask.shape)
-                        self._roiManager.updateRoi(selectedROIParam.roiFile, newRoi)
+                        self.roiManager.updateRoi(selectedROIParam.roiFile, newRoi)
                         self._polyWidg.set_active(False)
                         self._polyWidg.set_visible(False)
                         self.enableHoverAnnotation(True)
@@ -320,7 +320,7 @@ class RoiPlot(QWidget):
         for name, num, fformat in self.metadata.getRois():
             if re.fullmatch(pattern, name):
                 try:
-                    self.addRoi(self._roiManager.getROI(self.metadata, name, num))
+                    self.addRoi(self.roiManager.getROI(self.metadata, name, num))
                 except Exception as e:
                     logger = logging.getLogger(__name__)
                     logger.warning(f"Failed to load Roi with name: {name}, number: {num}, format: {fformat.name}")
