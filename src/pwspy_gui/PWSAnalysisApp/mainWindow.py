@@ -79,7 +79,6 @@ class PWSWindow(QMainWindow):
         except TypeError as e:  # Setting must not exist
             self.resize(1024, 768)
             self._setDefaultLayout()
-        self.show()
 
     def closeEvent(self, event):
         settings = QtCore.QSettings("BackmanLab", "PWSAnalysis2")

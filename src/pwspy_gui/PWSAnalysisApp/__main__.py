@@ -97,15 +97,14 @@ def main():
         logger.debug("About to construct `PWSApp`")
         app = PWSApp(sys.argv)
         logger.debug("Finished constructing `PWSApp`")
-        #Testing script
-        app.changeDirectory(r'\\backmanlabnas.myqnapcloud.com\home\Year3\zstack_focusSensitivity\again', False)
-        app.setSelectedCells([app.getLoadedCells()[0]])
-        app.plotSelectedCells()
-        app.window.plots._startRoiDrawing()
 
-        # import qdarkstyle
-        # dark_stylesheet = qdarkstyle.load_stylesheet_pyqt5()
-        # app.setStyleSheet(dark_stylesheet)
+        #Testing script
+        # app.changeDirectory(r'\\backmanlabnas.myqnapcloud.com\home\Year3\zstack_focusSensitivity\again', False)
+        # app.setSelectedCells(app.getLoadedCells()[:3])
+        # app.plotSelectedCells()
+        # app.window.plots._startRoiDrawing()
+
+
 
         if not isIpython():  # IPython runs its own QApplication so we handle things slightly different.
             sys.exit(app.exec_())

@@ -54,8 +54,8 @@ class PWSApp(QApplication):  # TODO add a scriptable interface to load files, op
         self.ERManager = ERManager(applicationVars.extraReflectionDirectory)
         logger.debug("Finish constructing ERManager")
         self.window = PWSWindow(self.ERManager)
-        logger.debug("Finish constructing window")
         splash.finish(self.window)
+        logger.debug("Finish constructing window")
         self.anMan = AnalysisManager(self)
         self.window.runAction.connect(self.anMan.runList)
         availableRamGigs = psutil.virtual_memory().available / 1024**3
@@ -71,6 +71,12 @@ class PWSApp(QApplication):  # TODO add a scriptable interface to load files, op
         self.window.blindAction.triggered.connect(self.openBlindingDialog)
         self.window.roiConvertAction.triggered.connect(self.convertRois)
         self.workingDirectory = None
+
+        # import qdarkstyle  # This looks bad
+        # dark_stylesheet = qdarkstyle.load_stylesheet_pyqt5()
+        # self.setStyleSheet(dark_stylesheet)
+
+        self.window.show()
 
     ### API
     def changeDirectory(self, directory: str, recursive: bool):

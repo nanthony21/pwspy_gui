@@ -149,7 +149,7 @@ class RoiDrawer(QWidget):
                                        f"Roi {name}:{num} already exists. Overwrite?")
             if ans == QMessageBox.Yes:
                 roiFile = self.anViewer.roiManager.getROI(acq, name, num)
-                self.anViewer.getRoiManager().updateRoi(roiFile, roi)
+                self.anViewer.roiManager.updateRoi(roiFile, roi)
                 self._handleRoiSaving(acq, roiFile, True)
 
     def handleButtons(self, button):
