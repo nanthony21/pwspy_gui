@@ -78,8 +78,8 @@ class _DefaultROIManager(ROIManager):  # TODO LRU cache
         return os.path.split(roiFile.filePath)[0], roiFile.name, roiFile.number
 
     def removeRoi(self, roiFile: pwsdt.RoiFile):
-        roiFile.delete()
         self._cache.pop(self._getCacheKey(roiFile))
+        roiFile.delete()
 
     def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
         roiFile.update(roi)
@@ -92,7 +92,6 @@ class _DefaultROIManager(ROIManager):  # TODO LRU cache
 
     @cachedmethod(lambda self: self._cache, key=lambda acq, roiName, roiNum: (acq.filePath, roiName, roiNum))  # Cache results # TODO update cache when roi is saved, created, etc.
     def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
-        print(self._cache.currsize)
         return acq.loadRoi(roiName, roiNum)
 
     def close(self):
