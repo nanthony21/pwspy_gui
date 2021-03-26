@@ -21,6 +21,7 @@ import re
 import typing
 from dataclasses import dataclass
 from PyQt5.QtCore import pyqtSignal, Qt
+from matplotlib import patches
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.patches import Polygon
@@ -242,7 +243,7 @@ class RoiPlot(QWidget):
     def _addPolygonForRoi(self, roiFile: pwsdt.RoiFile):
         roi = roiFile.getRoi()
         if roi.verts is not None:
-            poly = roi.getBoundingPolygon()
+            poly = patches.Polygon(roi.verts, facecolor=(1, 0, 0, 0.5), linewidth=1, edgecolor=(0, 1, 0, 0.9))
             poly.set_picker(0)  # allow the polygon to trigger a pickevent
             self._plotWidget.ax.add_patch(poly)
             self.rois.append(RoiParams(roiFile, poly, False))
