@@ -154,12 +154,12 @@ class RoiPlot(QWidget):
                 break
 
     def _hoverCallback(self, event):  # Show an annotation about the ROI when the mouse hovers over it.
-        def update_annot(roi, poly):
+        def update_annot(roiFile: pwsdt.RoiFile, poly: Polygon):
             self.annot.xy = poly.xy.mean(axis=0)  # Set the location to the center of the polygon.
-            text = f"{roi.name}, {roi.number}"
+            text = f"{roiFile.name}, {roiFile.number}"
             if self.metadata.pws:  # A day may come where fluorescence is not taken on the same camera as pws, in this case we will have multiple pixel sizes and ROI handling will need an update. for now just assume we'll use PWS pixel size
                 if self.metadata.pws.pixelSizeUm:  # For some systems (nanocytomics) this is None
-                    text += f"\n{self.metadata.pws.pixelSizeUm ** 2 * np.sum(roi.mask):.2f} $μm^2$"
+                    text += f"\n{self.metadata.pws.pixelSizeUm ** 2 * np.sum(roiFile.getRoi().mask):.2f} $μm^2$"
             self.annot.set_text(text)
             self.annot.get_bbox_patch().set_alpha(0.4)
 

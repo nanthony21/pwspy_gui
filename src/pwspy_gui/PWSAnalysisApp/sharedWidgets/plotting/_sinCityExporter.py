@@ -1,12 +1,14 @@
+from __future__ import annotations
 import matplotlib
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QDialog, QWidget, QVBoxLayout, QDoubleSpinBox, QSpinBox, QPushButton, QGridLayout, QLabel, \
     QHBoxLayout, QMessageBox
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-
+import typing as t_
 from pwspy.utility.plotting import roiColor
-from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiPlot
+if t_.TYPE_CHECKING:
+    from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiPlot
 
 
 class SinCityDlg(QDialog):
