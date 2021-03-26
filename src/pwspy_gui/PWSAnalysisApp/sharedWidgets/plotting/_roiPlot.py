@@ -15,18 +15,18 @@
 # You should have received a copy of the GNU General Public License
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
 from __future__ import annotations
+
 import logging
 import re
 import typing
 from dataclasses import dataclass
-
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.patches import Polygon
 import numpy as np
 from PyQt5.QtGui import QCursor, QValidator
-from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout, QApplication
 from PyQt5 import QtCore
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
@@ -120,21 +120,29 @@ class RoiPlot(QWidget):
                 self.roiFilter.setCurrentIndex(i)
                 break
 
-    def setRoiSelected(self, roiFile: pwsdt.RoiFile, selected: bool):
-        param = [param for param in self.rois if roiFile is param.roiFile][0]
-        param.selected = selected
-        if selected:
-            param.polygon.set_edgecolor((0, 1, 1, 0.9))  # Highlight selected rois.
-            param.polygon.set_linewidth(2)
-        else:
-            param.polygon.set_edgecolor((0, 1, 0, 0.9))
-            param.polygon.set_linewidth(1)
+    def _setRoiSelected(self, roiParam: RoiParams, exclusive: bool):
+        if exclusive:
+            self._setAllRoisSelected(False)  # Deselect all previously selected ROIs
+        roiParam.selected = True
+        roiParam.polygon.set_edgecolor((0, 1, 1, 0.9))  # Highlight selected rois.
+        roiParam.polygon.set_linewidth(2)
+
+    def _setAllRoisSelected(self, selected: bool):
+        for param in self.rois:
+            param.selected = selected
+            if selected:
+                param.polygon.set_edgecolor((0, 1, 1, 0.9))  # Highlight selected rois.
+                param.polygon.set_linewidth(2)
+            else:
+                param.polygon.set_edgecolor((0, 1, 0, 0.9))
+                param.polygon.set_linewidth(1)
 
     def enableHoverAnnotation(self, enable: bool):
         if enable:
             self._toggleCids = [self._plotWidget.canvas.mpl_connect('motion_notify_event', self._hoverCallback),
                                 self._plotWidget.canvas.mpl_connect('button_press_event', self._mouseClickCallback),
-                                self._plotWidget.canvas.mpl_connect('key_press_event', self._keyPressCallback)]
+                                self._plotWidget.canvas.mpl_connect('key_press_event', self._keyPressCallback),
+                                self._plotWidget.canvas.mpl_connect('key_release_event', self._keyReleaseCallback)]
         else:
             if self._toggleCids:
                 [self._plotWidget.canvas.mpl_disconnect(cid) for cid in self._toggleCids]
@@ -186,21 +194,24 @@ class RoiPlot(QWidget):
             self.annot.set_text(text)
             self.annot.get_bbox_patch().set_alpha(0.4)
 
-        vis = self.annot.get_visible()
-        if event.inaxes == self._plotWidget.ax:
+        vis = self.annot.get_visible()  # Is the annotation already being shown?
+        if event.inaxes == self._plotWidget.ax:  # The event takes place in the axes of this widget.
             for params in self.rois:
                 contained, _ = params.polygon.contains(event)
                 if contained:
-                    if not vis:
+                    if not vis:  # If we aren't already showing the annotation then show it for the currently hovered ROI.
                         update_annot(params.roiFile, params.polygon)
                         self.annot.set_visible(True)
                         self._plotWidget.canvas.draw_idle()
                     return
-            if vis:  # If we got here then no hover actions were found.
+            if vis:  # If we got here then no hover actions were found. If an annotation is currently being shown turn off the annotation.
                 self.annot.set_visible(False)
                 self._plotWidget.canvas.draw_idle()
 
     def _keyPressCallback(self, event: KeyEvent):
+        pass
+
+    def _keyReleaseCallback(self, event: KeyEvent):
         pass
 
     def _mouseClickCallback(self, event: MouseEvent):
@@ -211,8 +222,12 @@ class RoiPlot(QWidget):
         else:
             selectedROIParam = None  # No Roi was clicked
 
-        if event.button == 1 and selectedROIParam is not None: #Left click
-            self.setRoiSelected(selectedROIParam.roiFile, not selectedROIParam.selected)
+        if event.button == 1:  # Left click
+            if selectedROIParam is None:  # Didn't click on an ROI
+                self._setAllRoisSelected(False)
+            else:
+                exclusive = not (Qt.ControlModifier & QApplication.keyboardModifiers())  # If control isn't being pressed then change to only select this one ROI. the QApplication method returns a bitmask of Qt.KeyboardModifiers
+                self._setRoiSelected(selectedROIParam, exclusive=exclusive)
             self._plotWidget.canvas.draw_idle()
         if event.button == 3:  # "3" is the right button
             # Actions that can happen even if no ROI was clicked on.
@@ -246,8 +261,7 @@ class RoiPlot(QWidget):
 
             def selectAllFunc():
                 sel = not any([param.selected for param in self.rois])  # Determine whether to select or deselect all
-                for param in self.rois:
-                    self.setRoiSelected(param.roiFile, sel)
+                self._setAllRoisSelected(sel)
                 self._plotWidget.canvas.draw_idle()
 
             popMenu = QMenu(self)
@@ -348,7 +362,6 @@ class WhiteSpaceValidator(QValidator):
 if __name__ == '__main__':
     fPath = r'C:\Users\nicke\Desktop\demo\toast\t\Cell1'
     from pwspy.dataTypes import AcqDir
-    from PyQt5.QtWidgets import QApplication
     acq = AcqDir(fPath)
     import sys
     app = QApplication(sys.argv)
