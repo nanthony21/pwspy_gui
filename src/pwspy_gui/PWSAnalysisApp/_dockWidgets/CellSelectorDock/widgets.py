@@ -220,7 +220,7 @@ class CellTableWidget(QTableWidget):
         self.verticalHeader().hide()
         [self.setColumnWidth(i, w) for i, (w, resizable) in enumerate(columns.values())] #Set the column widths
         [self.horizontalHeader().setSectionResizeMode(i, self.horizontalHeader().Fixed) for i, (w, resizable) in enumerate(columns.values()) if not resizable] #set the notes, and p/d/f columns nonresizeable
-        self._cellItems: t_.List[CellTableWidgetItem] = []
+        self.cellItems: t_.Dict[AcqDir, CellTableWidgetItem] = {}
         #This makes the items stay looking selected even when the table is inactive
         self.setStyleSheet("""QTableWidget::item:active {
                                 selection-background-color: darkblue;
@@ -233,31 +233,26 @@ class CellTableWidget(QTableWidget):
         self.palette().setColor(QPalette.HighlightedText, QtCore.Qt.white)
 
     @property
-    def cellItems(self) -> t_.List[CellTableWidgetItem]:
-        return self._cellItems
-
-    @property
-    def selectedCellItems(self) -> t_.List[CellTableWidgetItem]:
+    def selectedCellItems(self) -> t_.Tuple[CellTableWidgetItem]:
         """Returns the rows that have been selected."""
         rowIndices = [i.row() for i in self.selectedIndexes() if i.column()==0]  # This returns indexes for all items, which means we get several for a single row. Only look at the 0 column indexes.
 
         rowIndices.sort()
-        _ = {i.row: i for i in self._cellItems} #Cell items keyed by their current row position.
-        return [_[i] for i in rowIndices]
+        _ = {i.row: i for i in self.cellItems.values()} #Cell items keyed by their current row position.
+        return tuple(_[i] for i in rowIndices)
 
     def refreshCellItems(self, cells: t_.List[AcqDir] = None):
         """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
         if cells is None:
-            cells = []
-        for i in self._cellItems:
-            if i.acqDir in cells:
-                i.refresh()
+            cells = self.cellItems.keys()
+        for acq in cells:
+            self.cellItems[acq].refresh()
 
-    def addCellItems(self, items: t_.List[CellTableWidgetItem]) -> None:
-        row = len(self._cellItems)
+    def addCellItems(self, items: t_.Dict[AcqDir, CellTableWidgetItem]) -> None:
+        row = len(self.cellItems)
         self.setSortingEnabled(False)
         self.setRowCount(row + len(items))
-        for i, item in enumerate(items):
+        for i, item in enumerate(items.values()):
             newrow = row + i
             self.setItem(newrow, 0, item.pathLabel)
             self.setItem(newrow, 1, item.numLabel)
@@ -270,13 +265,13 @@ class CellTableWidget(QTableWidget):
             for j, widg in enumerate(item.pluginWidgets):
                 self.setItem(newrow, 8+j, widg)
         self.setSortingEnabled(True)
-        self._cellItems.extend(items)
+        self.cellItems.update(items)  # update the dict
 
     def clearCellItems(self) -> None:
         self.setRowCount(0)
-        for c in self._cellItems:
+        for c in self.cellItems.values():
             c.close() #This causes the cell item to save it's metadata.
-        self._cellItems = []
+        self.cellItems = {}
         self.itemsCleared.emit()
 
     def _showContextMenu(self, point: QtCore.QPoint):

@@ -47,7 +47,7 @@ class CellSelectorPluginSupport:
     def getPlugins(self) -> typing.Sequence[CellSelectorPlugin]:
         return self._plugins
 
-    def notifyCellSelectionChanged(self, cells: List[pwsdt.AcqDir]):
+    def notifyCellSelectionChanged(self, cells: typing.Sequence[pwsdt.AcqDir]):
         for plugin in self._plugins:
             try:
                 plugin.onCellsSelected(cells)
@@ -78,6 +78,7 @@ class CellSelectorPluginSupport:
             logging.getLogger(__name__).exception(e)
             QMessageBox.information(self._selector, "Plugin error", f"Error in `onPluginSelected` of plugin: {plugin.getName()}. See log.")
 
+
 class CellSelectorPlugin(metaclass=QABCMeta):
     """Base class for  a plugin that can extend the functionality of the `Cell Selector`.
     Implementions of this class should require no args for the constructor"""
@@ -87,7 +88,7 @@ class CellSelectorPlugin(metaclass=QABCMeta):
         pass
 
     @abc.abstractmethod
-    def onCellsSelected(self, cells: List[pwsdt.AcqDir]):
+    def onCellsSelected(self, cells: typing.Sequence[pwsdt.AcqDir]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 

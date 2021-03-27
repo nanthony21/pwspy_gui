@@ -161,18 +161,18 @@ class RoiPlot(QWidget):
 
     # Signal handlers for RoiManager
     def _onRoiRemoved(self, roiFile: pwsdt.RoiFile):  # This is most likely triggered by this widget's own actions, but it could also be external modification of the roiManager
-        if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
+        if self.metadata == roiFile.acquisition:  # ROI belongs to the currently displayed ROI
             self._removePolygonForRoi(roiFile)
             self._plotWidget.canvas.draw_idle()
 
     def _onRoiUpdated(self, roiFile: pwsdt.RoiFile):
-        if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
+        if self.metadata == roiFile.acquisition:  # ROI belongs to the currently displayed ROI
             self._removePolygonForRoi(roiFile)
             self._addPolygonForRoi(roiFile)
             self._plotWidget.canvas.draw_idle()
 
     def _onRoiCreated(self, roiFile: pwsdt.RoiFile, mayHaveBeenOverwrite: bool):
-        if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
+        if self.metadata == roiFile.acquisition:  # ROI belongs to the currently displayed ROI
             if mayHaveBeenOverwrite:
                 for param in self.rois:
                     if roiFile is param.roiFile:
@@ -280,7 +280,7 @@ class RoiPlot(QWidget):
         """
         # Actions that can happen even if no ROI was clicked on.
         def deleteFunc():
-            for param in self.rois:
+            for param in tuple(self.rois): # Create a tuple copy of the list since self.rois will be modified as we loop which causes weird behavior.
                 if param.selected:
                     self._roiManager.removeRoi(param.roiFile)  # Signals emitted here will causes the necesarry UI updates.
                     self.roiDeleted.emit(self.metadata, param.roiFile)
