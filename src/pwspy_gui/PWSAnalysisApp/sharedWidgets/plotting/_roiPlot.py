@@ -17,17 +17,18 @@
 from __future__ import annotations
 
 import logging
+import pickle
 import re
 import typing
 from dataclasses import dataclass
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QMimeData
 from matplotlib import patches
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.patches import PathPatch
 import numpy as np
 from PyQt5.QtGui import QCursor, QValidator
-from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout, QApplication
+from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout, QApplication, QMessageBox
 from PyQt5 import QtCore
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
@@ -286,14 +287,40 @@ class RoiPlot(QWidget):
         def deleteFunc():
             self.removeRois([param.roiFile for param in self.rois if param.selected])
 
+        def copyFunc():
+            d = {}
+            for param in self.rois:
+                if param.selected:
+                    roiFile = param.roiFile
+                    d[(roiFile.name, roiFile.number)] = roiFile.getRoi()
+            mimeData = QMimeData()
+            mimeData.setData('pickleRoi', pickle.dumps(d))
+            QApplication.clipboard().setMimeData(mimeData)
+
+        def pasteFunc():
+            try:
+                b = QApplication.clipboard().mimeData().data('pickleRoi')
+                d: dict = pickle.loads(b)
+                for k, v in d.items():
+                    try:
+                        self.createRoi(self.metadata, v, k[0], k[1])
+                    except OSError:
+                        logging.getLogger(__name__).info(f"Attempting to paste and ROI that already exists. Cannot Overwrite. {v.name}, {v.number}")
+            except Exception as e:
+                QMessageBox.information(self, "Nope", 'Pasting Failed. See the log.')
+                logging.getLogger(__name__).exception(e)
+
         popMenu = QMenu(self)
         deleteAction = popMenu.addAction("Delete Selected ROIs", deleteFunc)
         moveAction = popMenu.addAction("(S)hift/Rotate Selected ROIs", self._moveRoisFunc)
         selectAllAction = popMenu.addAction("De/Select (A)ll", self._selectAllFunc)
+        copyAction = popMenu.addAction("Copy ROIs", copyFunc)
+        pasteAction = popMenu.addAction("Paste ROIs", pasteFunc)
 
         if not any([roiParam.selected for roiParam in self.rois]):  # If no rois are selected then some actions can't be performed
             deleteAction.setEnabled(False)
             moveAction.setEnabled(False)
+            copyAction.setEnabled(False)
 
         moveAction.setToolTip(MovingModifier.getHelpText())
         popMenu.setToolTipsVisible(True)
