@@ -48,7 +48,7 @@ class RoiDrawer(QWidget):
     Args:
         metadatas: A list of pwspy AcquisitionDirectory `AcqDir` objects paired with optional analysis results objects for that acquisition.
     """
-    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile, bool)  # Fired when a roi is created. These
+    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile, bool)  # Fired when a roi is created by this widget.
     roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
     roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
     metadataChanged = pyqtSignal(pwsdt.AcqDir)  # The acquisition we are looking at has been switched.
@@ -65,6 +65,7 @@ class RoiDrawer(QWidget):
         self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField, roiManager=roiManager)
         self.anViewer.roiPlot.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
         self.anViewer.roiPlot.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
+        self.anViewer.roiPlot.roiCreated.connect(lambda acq, roi: self.roiCreated.emit(acq, roi))
         self.roiManager = roiManager
 
         self.newRoiDlg = NewRoiDlg(self)

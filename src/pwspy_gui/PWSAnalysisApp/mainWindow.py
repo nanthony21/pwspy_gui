@@ -24,17 +24,17 @@ from . import resources
 from pwspy_gui import resources as sharedresources
 import pwspy
 import pwspy_gui
-from .componentInterfaces import CellSelector, AnalysisSettingsCreator, ResultsTableController
+from .componentInterfaces import CellSelector, AnalysisSettingsCreator, ResultsTableController, ROIManager
 from .dialogs import WorkingDirDialog
 from ._dockWidgets import CellSelectorDock, AnalysisSettingsDock, ResultsTableControllerDock, PlottingDock
 
 
 class PWSWindow(QMainWindow):
-    def __init__(self, erManager: ERManager):
+    def __init__(self, erManager: ERManager, roiManager: ROIManager):
         super().__init__()
         self.setWindowTitle(QApplication.instance().applicationName())
         self.setWindowIcon(QtGui.QIcon(os.path.join(resources, 'cellLogo.png')))
-        self.cellSelector: CellSelector = CellSelectorDock(self)
+        self.cellSelector: CellSelector = CellSelectorDock(parent=self, roiManager=roiManager)
         self.analysisSettings: AnalysisSettingsCreator = AnalysisSettingsDock(self, self.cellSelector, erManager)
         self.resultsTable: ResultsTableController = ResultsTableControllerDock(self)
         self.plots = PlottingDock(self.cellSelector)

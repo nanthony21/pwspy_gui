@@ -57,7 +57,7 @@ class PWSApp(QApplication):
         logger.debug("Initialize ERManager")
         self.ERManager = ERManager(applicationVars.extraReflectionDirectory)
         logger.debug("Finish constructing ERManager")
-        self.window = PWSWindow(self.ERManager)
+        self.window = PWSWindow(self.ERManager, self.roiManager)
         splash.finish(self.window)
         logger.debug("Finish constructing window")
         self.anMan = AnalysisManager(self)

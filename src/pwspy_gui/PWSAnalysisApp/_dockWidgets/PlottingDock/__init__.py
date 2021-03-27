@@ -101,7 +101,6 @@ class PlottingDock(QDockWidget):
 
         self._enableAnalysisPlottingButtons('false')
 
-
     def _addPlots(self, plots: List[QWidget]):
         self._plots.extend(plots)
         [self._scrollContents.layout().addWidget(plot) for plot in plots]
@@ -116,8 +115,6 @@ class PlottingDock(QDockWidget):
         if len(metadatas) > 0:  # Otherwise we crash
             try:
                 self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, self)
-                self.roiDrawer.roiCreated.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
-                self.roiDrawer.roiDeleted.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
             except Exception as e:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self, "Error", "An error occured. Please see the log file.")

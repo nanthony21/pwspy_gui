@@ -47,8 +47,9 @@ class RoiParams:
 
 class RoiPlot(QWidget):
     """Adds GUI handling for ROIs."""
-    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # TODO remove if thes have a reason to exist
-    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
+    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # Indicates that an ROI deletion was initiated by this widget.
+    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # Indicates that an ROI modification was initiated by this widget.
+    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # Indicates that an ROI modification was created by this widget.
 
     def __init__(self, acqDir: pwsdt.AcqDir, data: np.ndarray, roiManager: ROIManager, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
@@ -159,15 +160,13 @@ class RoiPlot(QWidget):
         self._plotWidget.canvas.draw_idle()
 
     # Signal handlers for RoiManager
-    def _onRoiRemoved(self, roiFile: pwsdt.RoiFile):
+    def _onRoiRemoved(self, roiFile: pwsdt.RoiFile):  # This is most likely triggered by this widget's own actions, but it could also be external modification of the roiManager
         if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
-            self.roiDeleted.emit(self.metadata, roiFile)
             self._removePolygonForRoi(roiFile)
             self._plotWidget.canvas.draw_idle()
 
     def _onRoiUpdated(self, roiFile: pwsdt.RoiFile):
         if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
-            self.roiModified.emit(self.metadata, roiFile)
             self._removePolygonForRoi(roiFile)
             self._addPolygonForRoi(roiFile)
             self._plotWidget.canvas.draw_idle()
@@ -283,7 +282,8 @@ class RoiPlot(QWidget):
         def deleteFunc():
             for param in self.rois:
                 if param.selected:
-                    self._roiManager.removeRoi(param.roiFile)
+                    self._roiManager.removeRoi(param.roiFile)  # Signals emitted here will causes the necesarry UI updates.
+                    self.roiDeleted.emit(self.metadata, param.roiFile)
 
         def copyFunc():
             d = {}
@@ -301,7 +301,8 @@ class RoiPlot(QWidget):
                 d: dict = pickle.loads(b)
                 for k, v in d.items():
                     try:
-                        self._roiManager.createRoi(self.metadata, v, k[0], k[1], overwrite=False)
+                        roiFile = self._roiManager.createRoi(self.metadata, v, k[0], k[1], overwrite=False)
+                        self.roiCreated.emit(self.metadata, roiFile)
                     except OSError:
                         logging.getLogger(__name__).info(f"Attempting to paste and ROI that already exists. Cannot Overwrite. {v.name}, {v.number}")
             except Exception as e:
@@ -349,6 +350,8 @@ class RoiPlot(QWidget):
                 newRoi = pwsdt.Roi.fromVerts(np.array(verts),
                                              param.roiFile.getRoi().mask.shape)
                 self._roiManager.updateRoi(param.roiFile, newRoi)
+                self.roiModified.emit(self.metadata, param.roiFile)
+
             self.enableHoverAnnotation(True)
 
         def cancelled():
@@ -379,6 +382,8 @@ class RoiPlot(QWidget):
             self._polyWidg.set_active(False)
             self._polyWidg.set_visible(False)
             self._roiManager.updateRoi(selectedROIParam.roiFile, newRoi)
+            self.roiModified.emit(self.metadata, selectedROIParam.roiFile)
+
             self.enableHoverAnnotation(True)
 
         def cancelled():

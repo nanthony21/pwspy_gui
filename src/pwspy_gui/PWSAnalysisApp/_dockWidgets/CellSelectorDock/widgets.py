@@ -106,7 +106,8 @@ class CellTableWidgetItem:
         else:
             self._setItemColor(QtCore.Qt.white)
         self._invalid = invalid
-        if save: self._saveMetadata()
+        if save:
+            self._saveMetadata()
 
     def setReference(self, reference: bool, save: bool = True) -> None:
         if self.isInvalid():
@@ -219,7 +220,7 @@ class CellTableWidget(QTableWidget):
         self.verticalHeader().hide()
         [self.setColumnWidth(i, w) for i, (w, resizable) in enumerate(columns.values())] #Set the column widths
         [self.horizontalHeader().setSectionResizeMode(i, self.horizontalHeader().Fixed) for i, (w, resizable) in enumerate(columns.values()) if not resizable] #set the notes, and p/d/f columns nonresizeable
-        self._cellItems = []
+        self._cellItems: t_.List[CellTableWidgetItem] = []
         #This makes the items stay looking selected even when the table is inactive
         self.setStyleSheet("""QTableWidget::item:active {
                                 selection-background-color: darkblue;

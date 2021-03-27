@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QComboBox, QLineE
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp._dockWidgets.CellSelectorDock.widgets import ReferencesTableItem
 from .widgets import CellTableWidgetItem, CellTableWidget, ReferencesTable
-from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
+from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector, ROIManager
 from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPluginSupport
 from ...sharedWidgets import ScrollableMessageBox
 
@@ -36,9 +36,12 @@ class CellSelectorDock(CellSelector, QDockWidget):
     """This dockwidget is used by the user to select which cells they want to act upon (run an analysis, plot, etc.)"""
 
     # noinspection PyUnresolvedReferences
-    def __init__(self, parent: QWidget):
+    def __init__(self, parent: QWidget, roiManager: ROIManager):
         super().__init__("Cell Selector", parent=parent)
         self._pluginSupport = CellSelectorPluginSupport(self, self)
+        self._roiManager = roiManager
+        self._roiManager.roiCreated.connect(lambda roiFile: self.refreshCellItems([acq for acq in self.getAllCellMetas() if acq.ownsRoiFile(roiFile)]))
+        self._roiManager.roiRemoved.connect(lambda roiFile: self.refreshCellItems([acq for acq in self.getAllCellMetas() if acq.ownsRoiFile(roiFile)]))
         self.setStyleSheet("QDockWidget > QWidget { border: 1px solid lightgray; }")
         self.setObjectName('CellSelectorDock')  # needed for restore state to work
         self._widget = QWidget(self)

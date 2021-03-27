@@ -94,6 +94,7 @@ class AnalysisSettingsCreator(metaclass=QABCMeta):
     @abc.abstractmethod
     def getListedAnalyses(self) -> typing.List[AbstractRuntimeAnalysisSettings]: pass
 
+
 class ROIManager(metaclass=QABCMeta):
     """Handles the actual file saving and retrieval. Any code using this should only modify ROI files through this manager."""
 

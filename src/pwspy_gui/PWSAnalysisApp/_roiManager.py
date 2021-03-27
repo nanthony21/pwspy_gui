@@ -18,8 +18,8 @@ class _DefaultROIManager(ROIManager, QObject):
 
     def removeRoi(self, roiFile: pwsdt.RoiFile):
         self._cache.pop(self._getCacheKey(roiFile))
-        self.roiRemoved.emit(roiFile)
         roiFile.delete()
+        self.roiRemoved.emit(roiFile)
 
     def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
         roiFile.update(roi)
