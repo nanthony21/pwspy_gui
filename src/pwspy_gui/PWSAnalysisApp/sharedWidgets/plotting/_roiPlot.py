@@ -22,7 +22,6 @@ import re
 import typing
 from dataclasses import dataclass
 from PyQt5.QtCore import pyqtSignal, Qt, QMimeData
-from matplotlib import patches
 from shapely.geometry import Polygon as shapelyPolygon
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.patches import PathPatch
@@ -33,11 +32,11 @@ from PyQt5 import QtCore
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
 import pwspy.dataTypes as pwsdt
-from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._roiManager import _DefaultROIManager
+from pwspy_gui.PWSAnalysisApp._roiManager import _DefaultROIManager, ROIManager
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._sinCityExporter import SinCityDlg
 import descartes
+import os
 
-# TODO add right click copy/paste.
 
 @dataclass
 class RoiParams:
@@ -48,10 +47,10 @@ class RoiParams:
 
 class RoiPlot(QWidget):
     """Adds GUI handling for ROIs."""
-    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
+    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # TODO remove if thes have a reason to exist
     roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
 
-    def __init__(self, acqDir: pwsdt.AcqDir, data: np.ndarray, parent=None, flags: QtCore.Qt.WindowFlags = None):
+    def __init__(self, acqDir: pwsdt.AcqDir, data: np.ndarray, roiManager: ROIManager, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
             super().__init__(parent, flags=flags)
         else:
@@ -88,13 +87,10 @@ class RoiPlot(QWidget):
         self._toggleCids = None
         self.enableHoverAnnotation(True)
 
-        self._roiManager = _DefaultROIManager()
-
-    def __del__(self):
-        try:
-            self._roiManager.close()
-        except AttributeError:  # If an exception occurs in the constructor then _roiManager won't exist, no need to report that as an error.
-            pass
+        self._roiManager = roiManager
+        self._roiManager.roiRemoved.connect(self._onRoiRemoved)
+        self._roiManager.roiUpdated.connect(self._onRoiUpdated)
+        self._roiManager.roiCreated.connect(self._onRoiCreated)
 
     def getImageData(self) -> np.ndarray:
         return self._plotWidget.data
@@ -102,7 +98,7 @@ class RoiPlot(QWidget):
     def setImageData(self, data: np.ndarray):
         self._plotWidget.setImageData(data)
 
-    def setMetadata(self, metadata: AcqDir):
+    def setMetadata(self, metadata: pwsdt.AcqDir):
         """Refresh the ROIs based on a new metadata. Also needs to be provided with the data for the image to display."""
         self.metadata = metadata
         self._clearRois()
@@ -162,29 +158,29 @@ class RoiPlot(QWidget):
                     logger.exception(e)
         self._plotWidget.canvas.draw_idle()
 
-    # API to wrap RoiManager functionality so we don't expose it publicly
-    def removeRois(self, roiFiles: typing.Sequence[pwsdt.RoiFile]):
-        for roiFile in roiFiles:
-            self._roiManager.removeRoi(roiFile)
+    # Signal handlers for RoiManager
+    def _onRoiRemoved(self, roiFile: pwsdt.RoiFile):
+        if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
             self.roiDeleted.emit(self.metadata, roiFile)
             self._removePolygonForRoi(roiFile)
-        self._plotWidget.canvas.draw_idle()
+            self._plotWidget.canvas.draw_idle()
 
-    def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
-        self._roiManager.updateRoi(roiFile, roi)
-        self.roiModified.emit(self.metadata, roiFile)
-        self._removePolygonForRoi(roiFile)
-        self._addPolygonForRoi(roiFile)
-        self._plotWidget.canvas.draw_idle()
+    def _onRoiUpdated(self, roiFile: pwsdt.RoiFile):
+        if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
+            self.roiModified.emit(self.metadata, roiFile)
+            self._removePolygonForRoi(roiFile)
+            self._addPolygonForRoi(roiFile)
+            self._plotWidget.canvas.draw_idle()
 
-    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int) -> pwsdt.RoiFile:
-        roiFile = self._roiManager.createRoi(acq, roi, roiName, roiNumber)
-        self._addPolygonForRoi(roiFile)
-        self._plotWidget.canvas.draw_idle()
-        return roiFile
-
-    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
-        return self._roiManager.getROI(acq, roiName, roiNum)
+    def _onRoiCreated(self, roiFile: pwsdt.RoiFile, mayHaveBeenOverwrite: bool):
+        if self.metadata.ownsRoiFile(roiFile):  # ROI belongs to the currently displayed ROI
+            if mayHaveBeenOverwrite:
+                for param in self.rois:
+                    if roiFile is param.roiFile:
+                        self._removePolygonForRoi(roiFile)
+                        break
+            self._addPolygonForRoi(roiFile)
+            self._plotWidget.canvas.draw_idle()
 
     def _hoverCallback(self, event):  # Show an annotation about the ROI when the mouse hovers over it.
         def update_annot(roiFile: pwsdt.RoiFile, poly: PathPatch):
@@ -285,7 +281,9 @@ class RoiPlot(QWidget):
         """
         # Actions that can happen even if no ROI was clicked on.
         def deleteFunc():
-            self.removeRois([param.roiFile for param in self.rois if param.selected])
+            for param in self.rois:
+                if param.selected:
+                    self._roiManager.removeRoi(param.roiFile)
 
         def copyFunc():
             d = {}
@@ -303,7 +301,7 @@ class RoiPlot(QWidget):
                 d: dict = pickle.loads(b)
                 for k, v in d.items():
                     try:
-                        self.createRoi(self.metadata, v, k[0], k[1])
+                        self._roiManager.createRoi(self.metadata, v, k[0], k[1], overwrite=False)
                     except OSError:
                         logging.getLogger(__name__).info(f"Attempting to paste and ROI that already exists. Cannot Overwrite. {v.name}, {v.number}")
             except Exception as e:
@@ -350,7 +348,7 @@ class RoiPlot(QWidget):
             for param, verts in zip(selectedROIParams, vertsSet):
                 newRoi = pwsdt.Roi.fromVerts(np.array(verts),
                                              param.roiFile.getRoi().mask.shape)
-                self.updateRoi(param.roiFile, newRoi)
+                self._roiManager.updateRoi(param.roiFile, newRoi)
             self.enableHoverAnnotation(True)
 
         def cancelled():
@@ -380,7 +378,7 @@ class RoiPlot(QWidget):
             newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.getRoi().mask.shape)
             self._polyWidg.set_active(False)
             self._polyWidg.set_visible(False)
-            self.updateRoi(selectedROIParam.roiFile, newRoi)
+            self._roiManager.updateRoi(selectedROIParam.roiFile, newRoi)
             self.enableHoverAnnotation(True)
 
         def cancelled():
@@ -390,6 +388,7 @@ class RoiPlot(QWidget):
         self._polyWidg.set_active(True)
         self.enableHoverAnnotation(False)
         self._polyWidg.initialize([handles])
+
 
 class WhiteSpaceValidator(QValidator):
     stateChanged = QtCore.pyqtSignal(QValidator.State)
@@ -408,14 +407,3 @@ class WhiteSpaceValidator(QValidator):
     def fixup(self, a0: str) -> str:
         return a0.strip()
 
-
-if __name__ == '__main__':
-    fPath = r'C:\Users\nicke\Desktop\demo\toast\t\Cell1'
-    from pwspy.dataTypes import AcqDir
-    acq = AcqDir(fPath)
-    import sys
-    app = QApplication(sys.argv)
-    b = RoiPlot(acq, acq.dynamics.getThumbnail())
-    b.setWindowTitle("test")
-    b.show()
-    sys.exit(app.exec())

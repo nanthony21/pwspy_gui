@@ -19,6 +19,8 @@ from __future__ import annotations
 from PyQt5.QtWidgets import QComboBox, QWidget, QVBoxLayout
 from typing import Optional
 import typing as t_
+import pwspy.dataTypes as pwsdt
+from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._widgets import AnalysisPlotter
@@ -28,7 +30,7 @@ from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._roiPlot import RoiPlot
 class AnalysisViewer(AnalysisPlotter, QWidget):
     """This class is a window that provides convenient viewing of a pws acquisition, analysis, and related images.
     It expands upon the functionality of `BigPlot` which handles ROIs but not analysis images."""
-    def __init__(self, metadata: AcqDir, analysisLoader: AnalysisPlotter.AnalysisResultsComboType, title: str, parent=None,
+    def __init__(self, metadata: pwsdt.AcqDir, analysisLoader: AnalysisPlotter.AnalysisResultsComboType, title: str, roiManager: ROIManager, parent=None,
                  initialField=AnalysisPlotter.PlotFields.Thumbnail, flags=None):
         if flags is not None:
             QWidget.__init__(self, parent=parent, flags=flags)
@@ -36,7 +38,7 @@ class AnalysisViewer(AnalysisPlotter, QWidget):
             QWidget.__init__(self, parent=parent)
         AnalysisPlotter.__init__(self, metadata, analysisLoader, initialField=initialField)
 
-        self.roiPlot = RoiPlot(metadata, metadata.getThumbnail(), parent=self)
+        self.roiPlot = RoiPlot(metadata, metadata.getThumbnail(), roiManager=roiManager, parent=self)
 
         self.setWindowTitle(title)
         self.analysisCombo = QComboBox(self)
@@ -103,16 +105,3 @@ class AnalysisViewer(AnalysisPlotter, QWidget):
             super().setMetadata(md, analysis)
         self.roiPlot.setMetadata(md)
         self._populateFields()
-
-
-
-if __name__ == '__main__':
-    fPath = r'G:\Aya_NAstudy\matchedNAi_largeNAc\cells\Cell2'
-    from pwspy.dataTypes import AcqDir
-    from PyQt5.QtWidgets import QApplication
-    acq = AcqDir(fPath)
-    import sys
-    app = QApplication(sys.argv)
-    b = AnalysisViewer(acq, ConglomerateAnalysisResults(None, None), "Test")
-    b.show()
-    sys.exit(app.exec())

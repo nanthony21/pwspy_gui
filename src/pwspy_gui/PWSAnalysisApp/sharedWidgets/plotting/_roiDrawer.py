@@ -24,6 +24,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtWidgets import QWidget, QGridLayout, QButtonGroup, QPushButton, QDialog, QSpinBox, QLabel, \
     QMessageBox, QMenu, QAction, QApplication
+from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
 
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 import os
@@ -52,7 +53,7 @@ class RoiDrawer(QWidget):
     roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
     metadataChanged = pyqtSignal(pwsdt.AcqDir)  # The acquisition we are looking at has been switched.
 
-    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], parent=None, flags=QtCore.Qt.Window,
+    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], roiManager: ROIManager, parent=None, flags=QtCore.Qt.Window,
                  title: str = "Roi Drawer 3000", initialField=AnalysisViewer.PlotFields.Thumbnail):
         QWidget.__init__(self, parent=parent, flags=flags)
         self.setWindowTitle(title)
@@ -61,9 +62,10 @@ class RoiDrawer(QWidget):
         layout = QGridLayout()
 
         self._mdIndex = 0
-        self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField)
+        self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField, roiManager=roiManager)
         self.anViewer.roiPlot.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
         self.anViewer.roiPlot.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
+        self.roiManager = roiManager
 
         self.newRoiDlg = NewRoiDlg(self)
 
@@ -142,14 +144,14 @@ class RoiDrawer(QWidget):
     def _saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
         roi = pwsdt.Roi.fromVerts(verts, datashape)
         try:
-            roiFile = self.anViewer.roiPlot.createRoi(acq, roi, name, num)
+            roiFile = self.roiManager.createRoi(acq, roi, name, num, overwrite=False)
             self.roiCreated.emit(acq, roiFile, False)
         except OSError:
             ans = QMessageBox.question(self.anViewer, 'Overwrite?',
                                        f"Roi {name}:{num} already exists. Overwrite?")
             if ans == QMessageBox.Yes:
-                roiFile = self.anViewer.roiPlot.getROI(acq, name, num)
-                self.anViewer.roiPlot.updateRoi(roiFile, roi)
+                roiFile = self.roiManager.getROI(acq, name, num)
+                self.roiManager.updateRoi(roiFile, roi)
                 self.roiCreated.emit(acq, roiFile, True)
 
     def handleButtons(self, button):

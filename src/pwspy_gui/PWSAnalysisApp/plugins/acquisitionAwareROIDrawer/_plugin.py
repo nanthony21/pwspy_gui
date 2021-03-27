@@ -4,6 +4,7 @@ import warnings
 import logging
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QApplication, QInputDialog, QMessageBox
+from pwspy_gui.PWSAnalysisApp.App import PWSApp
 
 from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPlugin
 import os
@@ -70,7 +71,7 @@ class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
                 if anName in acq.dynamics.getAnalyses():
                     dynAn = acq.dynamics.loadAnalysis(anName)
             mds.append((sacq, (pwsAn, dynAn)))
-        self._ui = SeqRoiDrawer(controller, mds, parent=self._parentWidget)
+        self._ui = SeqRoiDrawer(controller, mds, roiManager=PWSApp.instance().roiManager, parent=self._parentWidget)
         self._ui.show()
 
     def additionalColumnNames(self) -> typing.Sequence[str]:

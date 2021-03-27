@@ -21,7 +21,7 @@ from typing import List
 
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QScrollArea, QVBoxLayout, QPushButton, QMessageBox, \
-    QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame
+    QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame, QApplication
 
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
@@ -115,7 +115,7 @@ class PlottingDock(QDockWidget):
         metadatas = [(p.acq, p.analysis) for p in self._plots]
         if len(metadatas) > 0:  # Otherwise we crash
             try:
-                self.roiDrawer = RoiDrawer(metadatas, self)
+                self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, self)
                 self.roiDrawer.roiCreated.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
                 self.roiDrawer.roiDeleted.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
             except Exception as e:

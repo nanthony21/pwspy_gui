@@ -4,6 +4,7 @@ import numpy as np
 from PyQt5.QtCore import QObject
 from pwspy.utility.acquisition import SequencerStep, SeqAcqDir, PositionsStep, TimeStep
 import pwspy.dataTypes as pwsdt
+from pwspy_gui.PWSAnalysisApp._roiManager import ROIManager
 
 
 class Options(t_.NamedTuple):
@@ -83,10 +84,11 @@ class SequenceController:
 
 
 class RoiController(QObject):
-    def __init__(self, seqController: SequenceController, initialOptions: Options, parent: QObject = None):
+    def __init__(self, seqController: SequenceController, initialOptions: Options, roiManager: ROIManager, parent: QObject = None):
         super().__init__(parent=parent)
         self._seqController = seqController
         self._options = initialOptions
+        self._roiManager = roiManager
 
     def setOptions(self, options: Options):
         self._options = options
@@ -94,7 +96,7 @@ class RoiController(QObject):
     def getOptions(self) -> Options:
         return self._options
 
-    def setRoiChanged(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, overwrite: bool):
+    def setRoiChanged(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile, overwrite: bool):
         if not self._options.copyAlongTime:
             return
         tIdx, pIdx = self._seqController.getIndicesForAcquisition(acq)
@@ -102,10 +104,9 @@ class RoiController(QObject):
             return
         for i in range(tIdx+1, self._seqController.timeStep.stepIterations()):
             sacq = self._seqController.getAcquisitionForIndices(i, pIdx)
-            roiSpecs = [(roiName, roiNum) for roiName, roiNum, fformat in sacq.acquisition.getRois()]
-            sacq.acquisition.saveRoi(roi, overwrite=True)
+            self._roiManager.createRoi(sacq.acquisition, roiFile.getRoi(), roiFile.name, roiFile.number, overwrite=overwrite)
 
-    def deleteRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi):
+    def deleteRoi(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile):
         if not self._options.copyAlongTime:
             return
         tIdx, pIdx = self._seqController.getIndicesForAcquisition(acq)
@@ -114,5 +115,5 @@ class RoiController(QObject):
         for i in range(tIdx+1, self._seqController.timeStep.stepIterations()):
             sacq = self._seqController.getAcquisitionForIndices(i, pIdx)
             roiSpecs = [(roiName, roiNum) for roiName, roiNum, fformat in sacq.acquisition.getRois()]
-            if (roi.name, roi.number) in roiSpecs:
-                sacq.acquisition.deleteRoi(roi.name, roi.number)
+            if (roiFile.name, roiFile.number) in roiSpecs:
+                self._roiManager.removeRoi(self._roiManager.getROI(sacq.acquisition, roiFile.name, roiFile.number))

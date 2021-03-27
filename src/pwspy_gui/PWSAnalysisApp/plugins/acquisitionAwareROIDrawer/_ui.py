@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QTimer
+from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
 from pwspy_gui.PWSAnalysisApp.plugins.acquisitionAwareROIDrawer._control import SequenceController, Options, RoiController
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
@@ -20,13 +21,14 @@ if t_.TYPE_CHECKING:
 
 
 class SeqRoiDrawer(QWidget):
-    def __init__(self, controller: SequenceController, metadatas: t_.List[t_.Tuple[SeqAcqDir, t_.Optional[AnalysisResultsComboType]]], parent: QWidget = None, flags=QtCore.Qt.Window):
+    def __init__(self, controller: SequenceController, metadatas: t_.List[t_.Tuple[SeqAcqDir, t_.Optional[AnalysisResultsComboType]]], roiManager: ROIManager, parent: QWidget = None, flags=QtCore.Qt.Window):
         super().__init__(parent=parent, flags=flags)
         self.setWindowTitle("Sequence-Aware ROI Drawer")
         self._seqController = controller
-        self._roiController = RoiController(self._seqController, initialOptions=Options(False, False), parent=self)
 
-        self._drawer = RoiDrawer(metadatas=[(seqAcq.acquisition, anResults) for seqAcq, anResults in metadatas], parent=self, flags=QtCore.Qt.Widget)  # Override the default behavior of showing as it's own window.
+        self._drawer = RoiDrawer(metadatas=[(seqAcq.acquisition, anResults) for seqAcq, anResults in metadatas], roiManager=roiManager, parent=self, flags=QtCore.Qt.Widget)  # Override the default behavior of showing as it's own window.
+        self._roiController = RoiController(self._seqController, initialOptions=Options(False, False), roiManager=roiManager, parent=self)
+
         self._drawer.metadataChanged.connect(self._drawMetaDataChangeUnprompted)
         self._drawer.roiCreated.connect(lambda acq, roi, overwrite: self._roiController.setRoiChanged(acq, roi, overwrite))
         self._drawer.roiDeleted.connect(self._roiController.deleteRoi)
