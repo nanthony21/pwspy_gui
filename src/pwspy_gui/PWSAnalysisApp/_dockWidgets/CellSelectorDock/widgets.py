@@ -186,7 +186,8 @@ class CellTableWidgetItem:
                 json.dump(self.md, f)
         except Exception as e:
             logger = logging.getLogger(__name__)
-            logger.warning("Failed to save app metadata for self.mdPath")
+            logger.warning(f"Failed to save app metadata for {self.mdPath}")
+            logger.exception(e)
 
     def __del__(self):
         self.close() #This is here just in case. realistacally del rarely gets called, need to manually close each cell item.

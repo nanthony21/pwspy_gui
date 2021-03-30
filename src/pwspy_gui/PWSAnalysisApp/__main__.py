@@ -104,8 +104,6 @@ def main():
         # app.plotSelectedCells()
         # app.window.plots._startRoiDrawing()
 
-
-
         if not isIpython():  # IPython runs its own QApplication so we handle things slightly different.
             sys.exit(app.exec_())
     except Exception as e:  # Save error to text file.
