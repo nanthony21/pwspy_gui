@@ -151,13 +151,16 @@ class CellSelectorDock(CellSelector, QDockWidget):
                 return
             expr = self._expressionFilter.text()
             if expr.strip() != '':
+                analyses = []
+                if item.acqDir.pws:
+                    analyses += item.acqDir.pws.getAnalyses()
+                if item.acqDir.dynamics:
+                    analyses += item.acqDir.dynamics.getAnalyses()
                 try:
-                    analyses = []
-                    if item.acqDir.pws:
-                        analyses += item.acqDir.pws.getAnalyses()
-                    if item.acqDir.dynamics:
-                        analyses += item.acqDir.dynamics.getAnalyses()
                     roiNames, roiNums, fformats = zip(*item.acqDir.getRois())
+                except ValueError as ve:  # If an acquisition has no ROIs then the 0 items returned can't be unpacked to 3 variables
+                    roiNames = []; roiNums = []; fformats = []
+                try:
                     ret = bool(eval(expr.format(num=item.num,
                                                 analyses=analyses,
                                                 roiNames=roiNames,
@@ -165,6 +168,7 @@ class CellSelectorDock(CellSelector, QDockWidget):
                                                 idTag=item.acqDir.idTag)))
                 except Exception as e:
                     QMessageBox.information(self, 'Hmm', f'{expr} is not a valid boolean expression.')
+                    logging.getLogger(__name__).exception(e)
                     return
             else:
                 ret = True
