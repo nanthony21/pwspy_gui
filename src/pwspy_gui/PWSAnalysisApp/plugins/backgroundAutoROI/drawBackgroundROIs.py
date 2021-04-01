@@ -5,7 +5,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import QThread
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QDialog, QWidget, QPushButton, QLabel, QGridLayout, QLineEdit, QApplication, QFormLayout, \
-    QHBoxLayout
+    QHBoxLayout, QMessageBox
 from pwspy_gui.sharedWidgets.dialogs import BusyDialog
 from skimage import filters, morphology, measure
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ DESCRIPTION = \
     selected cells which have a PWS analysis matching the 
     name you provide.
     
-    Warning: Any existing ROIs named "BG" will be overwritten.
+    Warning: Any existing ROIs saved as ("bg", 0) will be overwritten.
     """
 
 
@@ -31,8 +31,16 @@ class BGRoiDrawer:
         if analysisname is None:
             return
         else:
-            self._processingThread.run = lambda acqList=acqs, anName=analysisname: drawBackgroundROIs(acqs, anName)
+            def runInThread(acqList=acqs, anName=analysisname):
+                drawBackgroundROIs(acqList, anName)
+
+            def onFinished():
+                QMessageBox.information(self._parent, "Finished!", "Automatic background detection is completed.")
+
+            self._processingThread.run = runInThread
+            self._processingThread.finished.connect(onFinished)
             self._processingThread.start()
+
 
     def _showDialog(self) -> str:
         dlg = BGROIDialog(self._parent)
@@ -67,6 +75,7 @@ def drawBackgroundROIs(acqs: t_.Iterable[pwsdt.AcqDir], analysisName: str):
 class BGROIDialog(QDialog):
     def __init__(self, parent: QWidget = None):
         super().__init__(parent=parent)
+        self.setWindowTitle("Automatic Background Detection")
 
         self.description = QLabel(DESCRIPTION)
         font = self.description.font()

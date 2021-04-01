@@ -39,7 +39,7 @@ class BackgroundAutoROIPlugin(CellSelectorPlugin):
 
     def additionalColumnNames(self) -> t_.Sequence[str]:
         """The header names for each column."""
-        return tuple() #return "Coord. Type", "Coord. Value" # We used to add new columns, but it was confusing, better not to.
+        return tuple()
 
     def getTableWidgets(self, acq: pwsdt.AcqDir) -> t_.Sequence[QWidget]:
         """provide a widget for each additional column to represent `acq`"""
