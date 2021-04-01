@@ -2,21 +2,46 @@ import logging
 import typing as t_
 
 from PyQt5 import QtCore
+from PyQt5.QtCore import QThread
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QDialog, QWidget, QPushButton, QLabel, QGridLayout, QLineEdit, QApplication, QFormLayout, \
     QHBoxLayout
+from pwspy_gui.sharedWidgets.dialogs import BusyDialog
 from skimage import filters, morphology, measure
 import matplotlib.pyplot as plt
 import pwspy.dataTypes as pwsdt
 
 DESCRIPTION = \
     """
-    This action will draw an ROI named BG on all 
+    This action will draw an ROI named (`bg`, 0) on all 
     selected cells which have a PWS analysis matching the 
     name you provide.
     
     Warning: Any existing ROIs named "BG" will be overwritten.
     """
+
+
+class BGRoiDrawer:
+    def __init__(self, parent: QWidget = None):
+        self._parent = parent
+        self._processingThread = QThread(self._parent)
+
+    def run(self, acqs: t_.Sequence[pwsdt.AcqDir]):
+        analysisname = self._showDialog()
+        if analysisname is None:
+            return
+        else:
+            self._processingThread.run = lambda acqList=acqs, anName=analysisname: drawBackgroundROIs(acqs, anName)
+            self._processingThread.start()
+
+    def _showDialog(self) -> str:
+        dlg = BGROIDialog(self._parent)
+        accepted = dlg.exec() == QDialog.Accepted
+        if accepted:
+            return dlg.getAnalysisName()
+        else:
+            return None
+
 
 def drawBackgroundROIs(acqs: t_.Iterable[pwsdt.AcqDir], analysisName: str):
     logger = logging.getLogger(__name__)
@@ -25,9 +50,9 @@ def drawBackgroundROIs(acqs: t_.Iterable[pwsdt.AcqDir], analysisName: str):
         try:
             rms = acq.pws.loadAnalysis(analysisName).rms
         except OSError:
-            logger.info(f"Skipping {acq.filePath}. No anlysis found.")
+            logger.info(f"Skipping {acq.filePath}. No PWS analysis file found.")
             continue
-        logger.info(f"Row {i} of {len(acqs)}")
+        logger.info(f"Auto-Drawing background ROI for acquisition {i} of {len(acqs)}")
         thresh = filters.threshold_otsu(rms)
         bgMask = rms < thresh  # Our background should be everything below the threshold.
         bgMask = morphology.binary_erosion(bgMask, morphology.disk(15))
@@ -35,35 +60,8 @@ def drawBackgroundROIs(acqs: t_.Iterable[pwsdt.AcqDir], analysisName: str):
         bgMask = morphology.binary_closing(morphology.binary_opening(bgMask, smthDisk), smthDisk)  # Smoothing
         label = measure.label(bgMask)  # Identify and label connected components
         mask = label == 1  # Our background region should be the largest non-zero region
-        # plt.imshow(mask)
-        roi = pwsdt.Roi.fromMask('bg', 0, mask=mask)
-        acq.saveRoi(roi, overwrite=True)
-
-
-class BGRoiDrawer:
-    def __init__(self, parent = None):
-        self._parent = parent
-
-    def run(self):
-        self.findConflictingRois()
-        cells = self.getSelectedCells()
-        analysisname = self.showDialog()
-        if analysisname is not None:
-            drawBackgroundROIs([], analysisname)
-
-    def findConflictingRois(self):
-        pass
-
-    def getSelectedCells(self):
-        pass
-
-    def showDialog(self) -> str:
-        dlg = BGROIDialog(self._parent)
-        accepted = dlg.exec() == QDialog.Accepted
-        if accepted:
-            return dlg.getResults()
-        else:
-            return None
+        roi = pwsdt.Roi.fromMask(mask=mask)
+        acq.saveRoi('bg', 0, roi, overwrite=True)
 
 
 class BGROIDialog(QDialog):
@@ -94,8 +92,9 @@ class BGROIDialog(QDialog):
         grid.addLayout(ll, 2, 0)
         self.setLayout(grid)
 
-    def getResults(self):
+    def getAnalysisName(self) -> str:
         return self.analysisName.text()
+
 
 if __name__ == '__main__':
     import sys
