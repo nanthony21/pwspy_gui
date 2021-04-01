@@ -25,7 +25,9 @@ import abc
 import typing
 from typing import List, Optional
 import sip
+from PyQt5.QtCore import pyqtSignal
 from pwspy import dataTypes as pwsdt
+from pwspy.dataTypes import RoiFile
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateCompilerResults, \
     ConglomerateCompilerSettings
 if typing.TYPE_CHECKING:
@@ -63,7 +65,9 @@ class CellSelector(metaclass=QABCMeta):
     def setHighlightedReference(self, ref: pwsdt.AcqDir): pass
 
     @abc.abstractmethod
-    def refreshCellItems(self): pass
+    def refreshCellItems(self, cells: List[pwsdt.AcqDir] = None):
+        """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
+        pass
 
     @abc.abstractmethod
     def close(self): pass
@@ -89,3 +93,33 @@ class ResultsTableController(metaclass=QABCMeta):
 class AnalysisSettingsCreator(metaclass=QABCMeta):
     @abc.abstractmethod
     def getListedAnalyses(self) -> typing.List[AbstractRuntimeAnalysisSettings]: pass
+
+
+class ROIManager(metaclass=QABCMeta):
+    """Handles the actual file saving and retrieval. Any code using this should only modify ROI files through this manager."""
+
+    # Implementation should fire these events afer the deed is done.
+    roiRemoved = pyqtSignal(RoiFile)
+    roiUpdated = pyqtSignal(RoiFile)
+    roiCreated = pyqtSignal(RoiFile, bool)  # bool: May have been an overwrite
+
+    @abc.abstractmethod
+    def removeRoi(self, roiFile: pwsdt.RoiFile):
+        pass
+
+    @abc.abstractmethod
+    def updateRoi(self, roiFile: pwsdt.RoiFile, roi: pwsdt.Roi):
+        pass
+
+    @abc.abstractmethod
+    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int, overwrite: bool = False) -> pwsdt.RoiFile:
+        pass
+
+    @abc.abstractmethod
+    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
+        pass
+
+    @abc.abstractmethod
+    def close(self):
+        """Make sure all files are wrapped up"""
+        pass

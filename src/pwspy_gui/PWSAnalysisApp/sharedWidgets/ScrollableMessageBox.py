@@ -49,6 +49,13 @@ class ScrollableMessageBox(QMessageBox):
         scr.exec()
         return scr.result()
 
+    @staticmethod
+    def information(parent: QWidget, title: str, text: str, buttons: typing.Union[QMessageBox.StandardButtons, QMessageBox.StandardButton] = QMessageBox.Ok) -> QMessageBox.StandardButton:
+        scr = ScrollableMessageBox(QMessageBox.Information, title, text, buttons, parent)
+        scr.setModal(True)
+        scr.exec()
+        return scr.result()
+
 if __name__ == "__main__":
     string = ""
     for i in range(10):

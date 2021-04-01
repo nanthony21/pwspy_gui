@@ -24,17 +24,17 @@ from . import resources
 from pwspy_gui import resources as sharedresources
 import pwspy
 import pwspy_gui
-from .componentInterfaces import CellSelector, AnalysisSettingsCreator, ResultsTableController
+from .componentInterfaces import CellSelector, AnalysisSettingsCreator, ResultsTableController, ROIManager
 from .dialogs import WorkingDirDialog
 from ._dockWidgets import CellSelectorDock, AnalysisSettingsDock, ResultsTableControllerDock, PlottingDock
 
 
 class PWSWindow(QMainWindow):
-    def __init__(self, erManager: ERManager):
+    def __init__(self, erManager: ERManager, roiManager: ROIManager):
         super().__init__()
         self.setWindowTitle(QApplication.instance().applicationName())
         self.setWindowIcon(QtGui.QIcon(os.path.join(resources, 'cellLogo.png')))
-        self.cellSelector: CellSelector = CellSelectorDock(self)
+        self.cellSelector: CellSelector = CellSelectorDock(parent=self, roiManager=roiManager)
         self.analysisSettings: AnalysisSettingsCreator = AnalysisSettingsDock(self, self.cellSelector, erManager)
         self.resultsTable: ResultsTableController = ResultsTableControllerDock(self)
         self.plots = PlottingDock(self.cellSelector)
@@ -62,7 +62,7 @@ class PWSWindow(QMainWindow):
                                     "This allows you to work on data anonymously without bias. You may need to run this "
                                     "software as `Admin` for this to work on Windows.")
         self.roiConvertAction = menu.addAction("Update ROI file formats")
-        self.roiConvertAction.setToolTip("Updates old .MAT roi files to a newer .H5 format that will run more efficiently."
+        self.roiConvertAction.setToolTip("Updates old .MAT roiFile files to a newer .H5 format that will run more efficiently."
                                          " Warning: The old files will be deleted.")
 
         toolBar = QToolBar("Tool Bar", self)
@@ -79,7 +79,6 @@ class PWSWindow(QMainWindow):
         except TypeError as e:  # Setting must not exist
             self.resize(1024, 768)
             self._setDefaultLayout()
-        self.show()
 
     def closeEvent(self, event):
         settings = QtCore.QSettings("BackmanLab", "PWSAnalysis2")

@@ -153,7 +153,7 @@ class CompilationSummaryDisplay(QDialog):
             for roiResult, roiWarnList in roiList:
                 if len(roiWarnList) > 0:
                     subItem = QTreeWidgetItem(item)
-                    subItem.setText(0, f"{len(roiWarnList)} warnings: {roiResult.generic.roi.name} {roiResult.generic.roi.number}")
+                    subItem.setText(0, f"{len(roiWarnList)} warnings: {roiResult.generic.roiFile.name} {roiResult.generic.roiFile.number}")
                     for warn in roiWarnList:
                         subItem2 = QTreeWidgetItem(subItem)
                         subItem2.setText(0, warn.shortMsg)

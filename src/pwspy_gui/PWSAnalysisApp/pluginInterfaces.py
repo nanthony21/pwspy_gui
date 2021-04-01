@@ -1,9 +1,10 @@
 from __future__ import annotations
 import abc
+import logging
 import typing
 from typing import List
 
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QMessageBox
 
 from pwspy import dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp.componentInterfaces import QABCMeta
@@ -11,7 +12,6 @@ import pwspy_gui.PWSAnalysisApp.plugins
 from pwspy.dataTypes import AcqDir
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
-
 
 
 class CellSelectorPluginSupport:
@@ -47,17 +47,36 @@ class CellSelectorPluginSupport:
     def getPlugins(self) -> typing.Sequence[CellSelectorPlugin]:
         return self._plugins
 
-    def notifyCellSelectionChanged(self, cells: List[pwsdt.AcqDir]):
+    def notifyCellSelectionChanged(self, cells: typing.Sequence[pwsdt.AcqDir]):
         for plugin in self._plugins:
-            plugin.onCellsSelected(cells)
+            try:
+                plugin.onCellsSelected(cells)
+            except Exception as e:
+                logging.getLogger(__name__).exception(e)
+                QMessageBox.information(self._selector, "Plugin error", f"Error in `onCellsSelected` of plugin: {plugin.getName()}. See log.")
 
     def notifyReferenceSelectionChanged(self, cell: pwsdt.AcqDir):
         for plugin in self._plugins:
-            plugin.onReferenceSelected(cell)
+            try:
+                plugin.onReferenceSelected(cell)
+            except Exception as e:
+                logging.getLogger(__name__).exception(e)
+                QMessageBox.information(self._selector, "Plugin error", f"Error in `onReferenceSelected` of plugin: {plugin.getName()}. See log.")
 
     def notifyNewCellsLoaded(self, cells: List[pwsdt.AcqDir]):
         for plugin in self._plugins:
-            plugin.onNewCellsLoaded(cells)
+            try:
+                plugin.onNewCellsLoaded(cells)
+            except Exception as e:
+                logging.getLogger(__name__).exception(e)
+                QMessageBox.information(self._selector, "Plugin error", f"Error in `onNewCellsLoaded` of plugin: {plugin.getName()}. See log.")
+
+    def notifyPluginSelected(self, plugin: CellSelectorPlugin):
+        try:
+            plugin.onPluginSelected()
+        except Exception as e:
+            logging.getLogger(__name__).exception(e)
+            QMessageBox.information(self._selector, "Plugin error", f"Error in `onPluginSelected` of plugin: {plugin.getName()}. See log.")
 
 
 class CellSelectorPlugin(metaclass=QABCMeta):
@@ -69,7 +88,7 @@ class CellSelectorPlugin(metaclass=QABCMeta):
         pass
 
     @abc.abstractmethod
-    def onCellsSelected(self, cells: List[pwsdt.AcqDir]):
+    def onCellsSelected(self, cells: typing.Sequence[pwsdt.AcqDir]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 

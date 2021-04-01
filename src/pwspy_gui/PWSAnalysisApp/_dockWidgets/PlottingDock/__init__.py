@@ -21,10 +21,10 @@ from typing import List
 
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QScrollArea, QVBoxLayout, QPushButton, QMessageBox, \
-    QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame
+    QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame, QApplication
 
 import pwspy.dataTypes as pwsdt
-from pwspy_gui.PWSAnalysisApp._dockWidgets.PlottingDock.widgets.roiDrawer import RoiDrawer
+from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
 from pwspy_gui.sharedWidgets.utilityWidgets import AspectRatioWidget
 from .widgets.littlePlot import LittlePlot
 from ...componentInterfaces import CellSelector
@@ -101,12 +101,7 @@ class PlottingDock(QDockWidget):
 
         self._enableAnalysisPlottingButtons('false')
 
-    def addPlot(self, plot: QWidget):
-        self._plots.append(plot)
-        self._scrollContents.layout().addWidget(plot)
-        self._plotsChanged()
-
-    def addPlots(self, plots: List[QWidget]):
+    def _addPlots(self, plots: List[QWidget]):
         self._plots.extend(plots)
         [self._scrollContents.layout().addWidget(plot) for plot in plots]
         self._plotsChanged()
@@ -117,8 +112,12 @@ class PlottingDock(QDockWidget):
 
     def _startRoiDrawing(self):
         metadatas = [(p.acq, p.analysis) for p in self._plots]
-        if len(metadatas) > 0: # Otherwise we crash
-            self.roiDrawer = RoiDrawer(metadatas, self)
+        if len(metadatas) > 0:  # Otherwise we crash
+            try:
+                self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, self)
+            except Exception as e:
+                logging.getLogger(__name__).exception(e)
+                QMessageBox.information(self, "Error", "An error occured. Please see the log file.")
         else:
             QMessageBox.information(self, "Oops", "Please select which cells to plot.")
 
@@ -191,7 +190,7 @@ class PlottingDock(QDockWidget):
                     else:
                         plotsToAdd.append(LittlePlot(cell, analysis, f"{analysisName} {os.path.split(cell.filePath)[-1]}"))
                         buttonState = 'true'  # Enable all buttons if there were some valid analysis.
-            self.addPlots(plotsToAdd)
+            self._addPlots(plotsToAdd)
             self._enableAnalysisPlottingButtons(buttonState)
         except Exception as e:
             logger = logging.getLogger(__name__)
@@ -211,3 +210,9 @@ class PlottingDock(QDockWidget):
                 except ValueError:  # The analysis field wasn't found
                     plot.changeData(plot.PlotFields.Thumbnail)
             self._lastButton = button
+
+    def setAnalysisName(self, name: str):
+        self._anNameEdit.setText(name)
+
+    def refreshPlots(self):
+        self._generatePlots(self.selector.getSelectedCellMetas())

@@ -17,26 +17,31 @@
 import logging
 import os
 import re
-from typing import List, Optional
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QPoint
+from PyQt5.QtGui import QFontMetrics
 from PyQt5.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QComboBox, QLineEdit, QGridLayout, QSplitter, \
     QSizePolicy, QMessageBox, QPushButton, QMenu, QAction
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp._dockWidgets.CellSelectorDock.widgets import ReferencesTableItem
 from .widgets import CellTableWidgetItem, CellTableWidget, ReferencesTable
-from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
+from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector, ROIManager
 from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPluginSupport
+from ...sharedWidgets import ScrollableMessageBox
+import typing as t_
 
 
 class CellSelectorDock(CellSelector, QDockWidget):
     """This dockwidget is used by the user to select which cells they want to act upon (run an analysis, plot, etc.)"""
 
     # noinspection PyUnresolvedReferences
-    def __init__(self, parent: QWidget):
+    def __init__(self, parent: QWidget, roiManager: ROIManager):
         super().__init__("Cell Selector", parent=parent)
         self._pluginSupport = CellSelectorPluginSupport(self, self)
+        self._roiManager = roiManager
+        self._roiManager.roiCreated.connect(lambda roiFile: self.refreshCellItems([roiFile.acquisition]))
+        self._roiManager.roiRemoved.connect(lambda roiFile: self.refreshCellItems([roiFile.acquisition]))
         self.setStyleSheet("QDockWidget > QWidget { border: 1px solid lightgray; }")
         self.setObjectName('CellSelectorDock')  # needed for restore state to work
         self._widget = QWidget(self)
@@ -62,14 +67,6 @@ class CellSelectorDock(CellSelector, QDockWidget):
 
         self._pathFilter = QComboBox(self._bottomBar)
         self._pathFilter.setEditable(True)
-        self._pathFilter.setStyleSheet('''*     
-        QComboBox QAbstractItemView 
-            {
-            min-width: 200px;
-            }
-        ''')  # This makes the dropdown wider so we can actually read.
-        width = self._pathFilter.minimumSizeHint().width()
-        self._pathFilter.view().setMinimumWidth(width)
 
         self._expressionFilter = QLineEdit(self._bottomBar)
         description = "Python boolean expression.\n\tCell#: {num},\n\tAnalysis names: {analyses},\n\tROI names: {roiNames},\n\tRoi numbers: {roiNums},\n\tID tag: {idTag}.\nE.G. `{num} > 5 and 'nucleus' in {roiNames}`"
@@ -100,32 +97,24 @@ class CellSelectorDock(CellSelector, QDockWidget):
 
     def _showPluginMenu(self):
         menu = QMenu("plugin menu", self)
+        actions = []
         for plugin in self._pluginSupport.getPlugins():
             action = QAction(plugin.getName())
-            action.triggered.connect(lambda checked, p=plugin: p.onPluginSelected())
+            action.triggered.connect(lambda checked, p=plugin: self._pluginSupport.notifyPluginSelected(p))
             menu.addAction(action)
+            actions.append(action)  # Without this the actions get deleted before the menu is shown.
         menu.exec(self._pluginsButton.mapToGlobal(QPoint(0, self._pluginsButton.height())))
 
-    # def _addCell(self, fileName: str, workingDir: str):
-    #     try:
-    #         cell = pwsdt.AcqDir(fileName)
-    #     except OSError:
-    #         return
-    #     cellItem = CellTableWidgetItem(cell, os.path.split(fileName)[0][len(workingDir) + 1:],
-    #                                     int(fileName.split('Cell')[-1]))
-    #     if cellItem.isReference():
-    #         self._refTableWidget.updateReferences(True, [cellItem])
-    #     self._tableWidget.addCellItem(cellItem)
-
-    def _addCells(self, acquisitions: List[pwsdt.AcqDir], workingDir: str):
-        cellItems = []
+    def _addCells(self, acquisitions: t_.List[pwsdt.AcqDir], workingDir: str):
+        workingDir = str(workingDir)  # This prevents problems if we pass a Path from pathlib instead.
+        cellItems = {}
         for acq in acquisitions:
             addedWidgets = []
             for plugin in self._pluginSupport.getPlugins():
                 addedWidgets += plugin.getTableWidgets(acq)
-            cellItems.append(CellTableWidgetItem(acq, os.path.split(acq.filePath)[0][len(workingDir) + 1:],
-                                        int(acq.filePath.split('Cell')[-1]),  additionalWidgets=addedWidgets))
-        refItems = [i for i in cellItems if i.isReference()]
+            cellItems[acq] = CellTableWidgetItem(acq, os.path.split(acq.filePath)[0][len(workingDir) + 1:],
+                                        int(acq.filePath.split('Cell')[-1]),  additionalWidgets=addedWidgets)
+        refItems = [i for i in cellItems.values() if i.isReference()]
         if len(refItems) > 0:
             self._refTableWidget.updateReferences(True, refItems)
         self._tableWidget.addCellItems(cellItems)
@@ -142,15 +131,18 @@ class CellSelectorDock(CellSelector, QDockWidget):
         self._pathFilter.clear()
         self._pathFilter.addItem('.*')
         paths = []
-        for i in self._tableWidget.cellItems:
+        for i in self._tableWidget.cellItems.values():
             paths.append(i.path)
-        self._pathFilter.addItems(set(paths))
+        paths = set(paths)  # Get rid of duplicates
+        self._pathFilter.addItems(paths)
+        maxWidth = max([self._pathFilter.view().fontMetrics().width(text) for text in paths])  # The width needed to show the longest path in the popup.
+        self._pathFilter.view().setMinimumWidth(maxWidth)
         self._pathFilter.currentIndexChanged.connect(self._executeFilter)  # reconnect
 
     def _executeFilter(self): #TODO the filter should also hide the reference items. this will require some changes ot the referece item table code.
         path = self._pathFilter.currentText()
         path = path.replace('\\', '\\\\')
-        for item in self._tableWidget.cellItems:
+        for item in self._tableWidget.cellItems.values():
             text = item.path.replace(r'\\', r'\\\\')
             try:
                 match = re.match(path, text)
@@ -159,13 +151,16 @@ class CellSelectorDock(CellSelector, QDockWidget):
                 return
             expr = self._expressionFilter.text()
             if expr.strip() != '':
+                analyses = []
+                if item.acqDir.pws:
+                    analyses += item.acqDir.pws.getAnalyses()
+                if item.acqDir.dynamics:
+                    analyses += item.acqDir.dynamics.getAnalyses()
                 try:
-                    analyses = []
-                    if item.acqDir.pws:
-                        analyses += item.acqDir.pws.getAnalyses()
-                    if item.acqDir.dynamics:
-                        analyses += item.acqDir.dynamics.getAnalyses()
                     roiNames, roiNums, fformats = zip(*item.acqDir.getRois())
+                except ValueError as ve:  # If an acquisition has no ROIs then the 0 items returned can't be unpacked to 3 variables
+                    roiNames = []; roiNums = []; fformats = []
+                try:
                     ret = bool(eval(expr.format(num=item.num,
                                                 analyses=analyses,
                                                 roiNames=roiNames,
@@ -173,6 +168,7 @@ class CellSelectorDock(CellSelector, QDockWidget):
                                                 idTag=item.acqDir.idTag)))
                 except Exception as e:
                     QMessageBox.information(self, 'Hmm', f'{expr} is not a valid boolean expression.')
+                    logging.getLogger(__name__).exception(e)
                     return
             else:
                 ret = True
@@ -185,34 +181,37 @@ class CellSelectorDock(CellSelector, QDockWidget):
         """This makes sure the application metadata is saved."""
         self._clearCells()
 
-    def loadNewCells(self, fileNames: List[str], workingDir: str):
+    def loadNewCells(self, fileNames: t_.List[str], workingDir: str):
         self._clearCells()
         acqs = []
+        errs = []
         for f in fileNames:
             try:
                 acqs.append(pwsdt.AcqDir(f))
             except OSError as e:
                 logger = logging.getLogger(__name__)
+                errs.append(f)
                 logger.warning(f"Failed to load {f}")
                 logger.exception(e)
                 continue
+        if len(errs) > 0:
+            ScrollableMessageBox.information(self, "Load Errors", f"The following images failed to load:\n {', '.join(errs)}")
         self._pluginSupport.notifyNewCellsLoaded(acqs)
         self._addCells(acqs, workingDir)
         self._updateFilters()
 
+    def getSelectedCellMetas(self) -> t_.Tuple[pwsdt.AcqDir]:
+        return tuple(i.acqDir for i in self._tableWidget.selectedCellItems)
 
-    def getSelectedCellMetas(self) -> List[pwsdt.AcqDir]:
-        return [i.acqDir for i in self._tableWidget.selectedCellItems]
+    def getAllCellMetas(self) -> t_.Tuple[pwsdt.AcqDir]:
+        return tuple(self._tableWidget.cellItems.keys())
 
-    def getAllCellMetas(self) -> List[pwsdt.AcqDir]:
-        return [i.acqDir for i in self._tableWidget.cellItems]
-
-    def getSelectedReferenceMeta(self) -> Optional[pwsdt.AcqDir]:
+    def getSelectedReferenceMeta(self) -> t_.Optional[pwsdt.AcqDir]:
         return self._refTableWidget.selectedReferenceMeta
 
-    def setSelectedCells(self, cells: List[pwsdt.AcqDir]):
+    def setSelectedCells(self, cells: t_.List[pwsdt.AcqDir]):
         idTags = [i.idTag for i in cells]
-        for item in self._tableWidget.cellItems:
+        for item in self._tableWidget.cellItems.values():
             if item.acqDir.idTag in idTags:
                 item.setSelected(True)
             else:
@@ -227,9 +226,9 @@ class CellSelectorDock(CellSelector, QDockWidget):
             else:
                 refitem.setSelected(False)
 
-    def setHighlightedCells(self, cells: List[pwsdt.AcqDir]):
+    def setHighlightedCells(self, cells: t_.List[pwsdt.AcqDir]):
         idTags = [i.idTag for i in cells]
-        for item in self._tableWidget.cellItems:
+        for item in self._tableWidget.cellItems.values():
             if item.acqDir.idTag in idTags:
                 item.setHighlighted(True)
             else:
@@ -244,5 +243,6 @@ class CellSelectorDock(CellSelector, QDockWidget):
             else:
                 refitem.setHighlighted(False)
 
-    def refreshCellItems(self):
-        self._tableWidget.refreshCellItems()
+    def refreshCellItems(self, cells: t_.List[pwsdt.AcqDir] = None):
+        """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
+        self._tableWidget.refreshCellItems(cells=cells)
