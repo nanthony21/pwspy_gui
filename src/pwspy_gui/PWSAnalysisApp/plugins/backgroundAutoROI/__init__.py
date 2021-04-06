@@ -34,7 +34,7 @@ class BackgroundAutoROIPlugin(CellSelectorPlugin):
 
     def onPluginSelected(self):
         """This method will be called when the plugin is activated."""
-        drawer = BGRoiDrawer(parent=self._parentWidget)
+        drawer = BGRoiDrawer(parent=self._parentWidget, roiManager=self._selector.getRoiManager())
         drawer.run(self._selector.getSelectedCellMetas())
 
     def additionalColumnNames(self) -> t_.Sequence[str]:

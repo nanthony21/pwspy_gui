@@ -6,6 +6,8 @@ from PyQt5.QtCore import QThread
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QDialog, QWidget, QPushButton, QLabel, QGridLayout, QLineEdit, QApplication, QFormLayout, \
     QHBoxLayout, QMessageBox
+
+from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
 from pwspy_gui.sharedWidgets.dialogs import BusyDialog
 from skimage import filters, morphology, measure
 import matplotlib.pyplot as plt
@@ -22,8 +24,17 @@ DESCRIPTION = \
 
 
 class BGRoiDrawer:
-    def __init__(self, parent: QWidget = None):
+    """
+    Opens a dialog box to get information to begin automatic ROI drawing and then runs the process in a separate thread. A message
+    box appears at the end giving some useful information.
+
+    Args:
+         parent: The QWidget to serve as the `parent` to the dialog boxes.
+         roiManager: An object that manages saving and loading of rois within a context. If None is supplied then the ROI operations will be performed directly
+    """
+    def __init__(self, parent: QWidget = None, roiManager: ROIManager = None):
         self._parent = parent
+        self._roiManager = roiManager
         self._processingThread = QThread(self._parent)
 
     def run(self, acqs: t_.Sequence[pwsdt.AcqDir]):
@@ -32,7 +43,7 @@ class BGRoiDrawer:
             return
         else:
             def runInThread(acqList=acqs, anName=analysisname):
-                drawBackgroundROIs(acqList, anName)
+                self.drawBackgroundROIs(acqList, anName)
 
             def onFinished():
                 QMessageBox.information(self._parent, "Finished!", "Automatic background detection is completed.")
@@ -50,26 +61,28 @@ class BGRoiDrawer:
         else:
             return None
 
+    def drawBackgroundROIs(self, acqs: t_.Iterable[pwsdt.AcqDir], analysisName: str):
+        logger = logging.getLogger(__name__)
 
-def drawBackgroundROIs(acqs: t_.Iterable[pwsdt.AcqDir], analysisName: str):
-    logger = logging.getLogger(__name__)
-
-    for i, acq in enumerate(acqs):
-        try:
-            rms = acq.pws.loadAnalysis(analysisName).rms
-        except OSError:
-            logger.info(f"Skipping {acq.filePath}. No PWS analysis file found.")
-            continue
-        logger.info(f"Auto-Drawing background ROI for acquisition {i} of {len(acqs)}")
-        thresh = filters.threshold_otsu(rms)
-        bgMask = rms < thresh  # Our background should be everything below the threshold.
-        bgMask = morphology.binary_erosion(bgMask, morphology.disk(15))
-        smthDisk = morphology.disk(15)
-        bgMask = morphology.binary_closing(morphology.binary_opening(bgMask, smthDisk), smthDisk)  # Smoothing
-        label = measure.label(bgMask)  # Identify and label connected components
-        mask = label == 1  # Our background region should be the largest non-zero region
-        roi = pwsdt.Roi.fromMask(mask=mask)
-        acq.saveRoi('bg', 0, roi, overwrite=True)
+        for i, acq in enumerate(acqs):
+            try:
+                rms = acq.pws.loadAnalysis(analysisName).rms
+            except OSError:
+                logger.info(f"Skipping {acq.filePath}. No PWS analysis file found.")
+                continue
+            logger.info(f"Auto-Drawing background ROI for acquisition {i} of {len(acqs)}")
+            thresh = filters.threshold_otsu(rms)
+            bgMask = rms < thresh  # Our background should be everything below the threshold.
+            bgMask = morphology.binary_erosion(bgMask, morphology.disk(15))
+            smthDisk = morphology.disk(15)
+            bgMask = morphology.binary_closing(morphology.binary_opening(bgMask, smthDisk), smthDisk)  # Smoothing
+            label = measure.label(bgMask)  # Identify and label connected components
+            mask = label == 1  # Our background region should be the largest non-zero region
+            roi = pwsdt.Roi.fromMask(mask=mask)
+            if self._roiManager is None:
+                acq.saveRoi('bg', 0, roi, overwrite=True)
+            else:
+                self._roiManager.createRoi(acq, roi, 'bg', 0, True)
 
 
 class BGROIDialog(QDialog):

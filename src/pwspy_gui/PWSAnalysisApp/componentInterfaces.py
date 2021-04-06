@@ -72,6 +72,11 @@ class CellSelector(metaclass=QABCMeta):
     @abc.abstractmethod
     def close(self): pass
 
+    @abc.abstractmethod
+    def getRoiManager(self) -> ROIManager:
+        """Return the ROI manager that manages the saving and loading of ROIs"""
+        pass
+
 
 class ResultsTableController(metaclass=QABCMeta):
     @abc.abstractmethod
