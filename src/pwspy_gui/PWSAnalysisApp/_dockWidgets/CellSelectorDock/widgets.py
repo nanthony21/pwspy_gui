@@ -46,6 +46,54 @@ def evalToolTip(cls: t_.Type[QWidget], method):
     return newClass
 
 
+class PreferencesMetadata:
+    def __init__(self, filePath: str, invalid: bool = False, reference: bool = False):
+        self.filePath = filePath
+        self._invalid = invalid
+        self._reference = reference
+        self._stale: bool = True  # Keeps track of if this object is in sync with the file. False means no saving is needed.
+
+    def close(self):
+        if self._stale:
+            self._toJson()  # Save if needed.
+
+    def __del__(self):  # This doesn't always work but it doesn't hurt to try
+        self.close()
+
+    @property
+    def reference(self): return self._reference
+
+    @reference.setter
+    def reference(self, ref: bool):
+        if self._reference != ref:
+            self._reference = ref
+            self._stale = True
+
+    @property
+    def invalid(self): return self._invalid
+
+    @invalid.setter
+    def invalid(self, inv: bool):
+        if self._invalid != inv:
+            self._invalid = inv
+            self._stale = True
+
+
+    def _toJson(self):
+        d = {'invalid': self._invalid, 'reference': self._reference}
+        with open(self.filePath, 'w') as f:
+            json.dump(d, f)
+        self._stale = False
+
+    @classmethod
+    def fromJson(cls, filePath: str):
+        with open(filePath, 'r') as f:
+            d = json.load(f)
+        md = PreferencesMetadata(filePath, invalid=d['invalid'], reference=d['reference'])
+        md._stale = False
+        return md
+
+
 class CellTableWidgetItem:
     """Represents a single row of the CellTableWidget and corresponds to a single PWS acquisition."""
     def __init__(self, acq: AcqDir, label: str, num: int, additionalWidgets: t_.Sequence[QWidget] = None):
@@ -84,14 +132,14 @@ class CellTableWidgetItem:
         else: self.fLabel.setText('N'); self.fLabel.setBackground(QtCore.Qt.white)
         self._items = [self.pathLabel, self.numLabel, self.roiLabel, self.anLabel] + self.pluginWidgets #This list is used for changing background color and for setting all items selected.
         self.refresh()
-        self.mdPath = os.path.join(self.acqDir.filePath, 'AnAppPrefs.json')
+        mdPath = os.path.join(self.acqDir.filePath, 'AnAppPrefs.json')
+        self.md: PreferencesMetadata
         try:
-            with open(self.mdPath, 'r') as f:
-                self.md = json.load(f)
+            self.md = PreferencesMetadata.fromJson(mdPath)
         except (JSONDecodeError, FileNotFoundError):
-            self.md = {'invalid': False, 'reference': False}
-        self.setInvalid(self._invalid, save=False) #Update item color based on saved status. Since invalid status overrides reference status we must do this first.
-        self.setReference(self._reference, save=False) #We override the default automatic saving of metadata since we're just loading anyway, nothing has been changed.
+            self.md = PreferencesMetadata(mdPath)
+        self.setInvalid(self.md.invalid)  # Update item color based on saved status. Since invalid status overrides reference status we must do this first.
+        self.setReference(self.md.reference)  # We override the default automatic saving of metadata since we're just loading anyway, nothing has been changed.
 
     @property
     def row(self):
@@ -99,31 +147,28 @@ class CellTableWidgetItem:
         This should return the correct row number."""
         return self.numLabel.row()
 
-    def setInvalid(self, invalid: bool, save: bool = True):
+    def setInvalid(self, invalid: bool):
         if invalid:
             self._setItemColor(QtCore.Qt.red)
-            self._reference = False
+            self.md.reference = False
         else:
             self._setItemColor(QtCore.Qt.white)
-        self._invalid = invalid
-        if save:
-            self._saveMetadata()
+        self.md.invalid = invalid
 
-    def setReference(self, reference: bool, save: bool = True) -> None:
+    def setReference(self, reference: bool) -> None:
         if self.isInvalid():
             return
         if reference:
             self._setItemColor(QtCore.Qt.darkGreen)
         else:
             self._setItemColor(QtCore.Qt.white)
-        self._reference = reference
-        if save: self._saveMetadata()
+        self.md.reference = reference
 
     def isInvalid(self) -> bool:
-        return self._invalid
+        return self.md.invalid
 
     def isReference(self) -> bool:
-        return self._reference
+        return self.md.reference
 
     def setSelected(self, select: bool):
         for i in self._items:
@@ -136,13 +181,18 @@ class CellTableWidgetItem:
             i.setFont(originalFont)
 
     def close(self):
-        self._saveMetadata()
+        try:
+            self.md.close()
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to save app metadata for {self.md.filePath}")
+            logger.exception(e)
 
     def refresh(self):
         """Set the number of roiFile's and analyses. Update the tooltips."""
         rois = self.acqDir.getRois()
         self.roiLabel.setNumber(len(rois))
-        anNumber = 0 #This is in case the next few statements evaluate to false.
+        anNumber = 0  # This is in case the next few statements evaluate to false.
         anToolTip = ""
         if self.acqDir.pws is not None:
             pwsAnalyses = self.acqDir.pws.getAnalyses()
@@ -167,30 +217,8 @@ class CellTableWidgetItem:
             d = {name: [num for nname, num in nameNums if nname == name] for name in names}
             self.roiLabel.setToolTip("\n".join([f'{k}: {v}' for k, v in d.items()]))
 
-
-    @property
-    def _invalid(self): return self.md['invalid']
-
-    @_invalid.setter
-    def _invalid(self, val): self.md['invalid'] = val
-
-    @property
-    def _reference(self): return self.md['reference']
-
-    @_reference.setter
-    def _reference(self, val): self.md['reference'] = val
-
-    def _saveMetadata(self):
-        try:
-            with open(self.mdPath, 'w') as f:
-                json.dump(self.md, f)
-        except Exception as e:
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to save app metadata for {self.mdPath}")
-            logger.exception(e)
-
     def __del__(self):
-        self.close() #This is here just in case. realistacally del rarely gets called, need to manually close each cell item.
+        self.close()  # This is here just in case. realistically del rarely gets called, need to manually close each cell item.
 
     def _setItemColor(self, color):
         for i in self._items:
@@ -219,7 +247,7 @@ class CellTableWidget(QTableWidget):
         self.setColumnCount(len(columns))
         self.setHorizontalHeaderLabels(columns.keys())
         self.verticalHeader().hide()
-        [self.setColumnWidth(i, w) for i, (w, resizable) in enumerate(columns.values())] #Set the column widths
+        [self.setColumnWidth(i, w) for i, (w, resizable) in enumerate(columns.values())]  # Set the column widths
         [self.horizontalHeader().setSectionResizeMode(i, self.horizontalHeader().Fixed) for i, (w, resizable) in enumerate(columns.values()) if not resizable] #set the notes, and p/d/f columns nonresizeable
         self.cellItems: t_.Dict[AcqDir, CellTableWidgetItem] = {}
         #This makes the items stay looking selected even when the table is inactive
