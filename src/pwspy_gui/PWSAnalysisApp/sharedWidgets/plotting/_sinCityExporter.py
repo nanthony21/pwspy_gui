@@ -14,6 +14,7 @@ if t_.TYPE_CHECKING:
 class SinCityDlg(QDialog):
     def __init__(self, parentRoiPlot: RoiPlot, parent: QWidget = None):
         super().__init__(parent=parent)
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowMinMaxButtonsHint)
         # self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowTitleHint | QtCore.Qt.CustomizeWindowHint)  # Get rid of the close button. this is handled by the selector widget active status
         self.setWindowTitle("Sin City Image Export")
         self.setModal(False)
