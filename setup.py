@@ -48,7 +48,8 @@ setup(name='pwspy_gui',
                         'PyQt5',
                         'pwspy>=0.2.3',  # Core pws package, available on backmanlab anaconda cloud account.
                         'mpl_qt_viz>=1.0.7',  # Plotting package available on PyPi and the backmanlab anaconda cloud account. Written for this project by Nick Anthony
-                        'descartes'],
+                        'descartes',
+                        'cachetools>=4'],
       package_dir={'': 'src'},
       package_data={'pwspy_gui': ['_resources/*',
                               'PWSAnalysisApp/_resources/*']},

@@ -3,7 +3,6 @@ import abc
 import logging
 import typing
 from typing import List
-
 from PyQt5.QtWidgets import QWidget, QMessageBox
 
 from pwspy import dataTypes as pwsdt
@@ -34,7 +33,7 @@ class CellSelectorPluginSupport:
 
         for finder, name, ispkg in iter_namespace(pwspy_gui.PWSAnalysisApp.plugins):  # Find all submodules of the root module
             mod = importlib.import_module(name)
-            clsmembers = inspect.getmembers(mod, lambda member: inspect.isclass(member))  # Get all the classes that are defined in the module
+            clsmembers = inspect.getmembers(mod, lambda member: inspect.isclass(member) and not inspect.isabstract(member))  # Get all the classes that are defined in the module
             for name, cls in clsmembers:
                 if issubclass(cls, CellSelectorPlugin):
                     plugins.append(cls)  # Add any class that implements the plugin base class

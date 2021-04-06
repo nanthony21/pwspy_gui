@@ -181,6 +181,9 @@ class CellSelectorDock(CellSelector, QDockWidget):
         """This makes sure the application metadata is saved."""
         self._clearCells()
 
+    def getRoiManager(self) -> ROIManager:
+        return self._roiManager
+
     def loadNewCells(self, fileNames: t_.List[str], workingDir: str):
         self._clearCells()
         acqs = []
