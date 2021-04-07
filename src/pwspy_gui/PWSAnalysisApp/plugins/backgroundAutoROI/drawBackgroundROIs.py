@@ -52,7 +52,6 @@ class BGRoiDrawer:
             self._processingThread.finished.connect(onFinished)
             self._processingThread.start()
 
-
     def _showDialog(self) -> str:
         dlg = BGROIDialog(self._parent)
         accepted = dlg.exec() == QDialog.Accepted
@@ -70,7 +69,7 @@ class BGRoiDrawer:
             except OSError:
                 logger.info(f"Skipping {acq.filePath}. No PWS analysis file found.")
                 continue
-            logger.info(f"Auto-Drawing background ROI for acquisition {i} of {len(acqs)}")
+            logger.info(f"Auto-Drawing background ROI for acquisition {i+1} of {len(acqs)}")
             thresh = filters.threshold_otsu(rms)
             bgMask = rms < thresh  # Our background should be everything below the threshold.
             bgMask = morphology.binary_erosion(bgMask, morphology.disk(15))
