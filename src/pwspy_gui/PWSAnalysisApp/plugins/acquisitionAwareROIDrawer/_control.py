@@ -2,7 +2,7 @@ import typing as t_
 
 import numpy as np
 from PyQt5.QtCore import QObject
-from pwspy.utility.acquisition import SequencerStep, SeqAcqDir, PositionsStep, TimeStep
+from pwspy.utility.acquisition import SequencerStep, SeqAcqDir, PositionsStep, TimeStep, SequencerCoordinate
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp._roiManager import ROIManager
 
@@ -11,15 +11,12 @@ class Options(t_.NamedTuple):
     copyAlongTime: bool
     trackMovement: bool
 
-# TODO Doesn't detect ROI modification from right click menu. Make a "ROI modification handler" so that the actuall saving can be easily swappable
-# TODO remove "Tracking" option for now.
-# TODO key bindings for quick modification.
-# TODO add Image Stabilization option, use optical flow to track full image shift.
+
 class SequenceController:
     """A utility class to help with selected acquisitions from a sequence that includes a multiple position and time series. both are optional"""
     def __init__(self, sequence: SequencerStep, acqs: t_.Sequence[SeqAcqDir]):
         self.sequence = sequence
-        self.acqs = acqs
+        self.coordMap: t_.Dict[pwsdt.AcqDir, SequencerCoordinate] = {acq.acquisition: acq.sequencerCoordinate for acq in acqs}  # A dictionary of the sequence coords keyed by tha acquisition
         posSteps = [step for step in sequence.iterateChildren() if isinstance(step, PositionsStep)]
         assert not len(posSteps) > 1, "Sequences with more than one `MultiplePositionsStep` are not currently supported"
         timeSteps = [step for step in sequence.iterateChildren() if isinstance(step, TimeStep)]
@@ -52,8 +49,7 @@ class SequenceController:
 
     def getIndicesForAcquisition(self, acq: t_.Union[SeqAcqDir, pwsdt.AcqDir]) -> t_.Tuple[int, int]:
         """Returns the iteration indices of the given acquisition in the form (timeIdx, posIdx)"""
-        sacq = acq if isinstance(acq, SeqAcqDir) else self.getSequencerAcqforAcq(acq)
-        coord = sacq.sequencerCoordinate
+        coord: SequencerCoordinate = acq.sequencerCoordinate if isinstance(acq, SeqAcqDir) else self.coordMap[acq]
         tIdx = coord.getStepIteration(self.timeStep) if self.timeStep is not None else None
         pIdx = coord.getStepIteration(self.posStep) if self.posStep is not None else None
         return tIdx, pIdx
@@ -65,18 +61,10 @@ class SequenceController:
             coordRange.setAcceptedIterations(self.timeStep.id, [tIndex])
         if self.posStep is not None:
             coordRange.setAcceptedIterations(self.posStep.id, [pIndex])
-        for acq in self.acqs:
-            coord = acq.sequencerCoordinate
+        for acq, coord in self.coordMap.items():
             if coord in coordRange:
                 return acq
-        raise ValueError(f"No acquisition was found to match Position index: {posIndex}, Time index: {tIndex}") # If we got this far then no matching acquisition was found.
-
-
-    def getSequencerAcqforAcq(self, acq: pwsdt.AcqDir) -> SeqAcqDir:
-        for sacq in self.acqs:
-            if sacq.acquisition is acq:
-                return sacq
-        raise ValueError(f"No Sequencer acquisition was found to match standard acquistion: {acq}")
+        raise ValueError(f"No acquisition was found to match Position index: {pIndex}, Time index: {tIndex}") # If we got this far then no matching acquisition was found.
 
     def getCurrentIndices(self) -> t_.Tuple[int, int]:
         """Of the form (tIndex, pIndex)"""
@@ -84,6 +72,9 @@ class SequenceController:
 
 
 class RoiController(QObject):
+    """Handles applying ROI changes across axes.
+
+    """
     def __init__(self, seqController: SequenceController, initialOptions: Options, roiManager: ROIManager, parent: QObject = None):
         super().__init__(parent=parent)
         self._seqController = seqController
