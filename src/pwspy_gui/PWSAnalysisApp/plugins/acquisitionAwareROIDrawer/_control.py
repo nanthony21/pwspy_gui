@@ -58,14 +58,14 @@ class RoiController(QObject):
     def __init__(self, seqController: SequenceController, initialOptions: Options, roiManager: ROIManager, parent: QObject = None):
         super().__init__(parent=parent)
         self._seqController = seqController
-        self._options = tuple(initialOptions for a in seqController.iterSteps)  # One open for each axis.
+        self._options = list(initialOptions for a in seqController.iterSteps)  # One open for each axis.
         self._roiManager = roiManager
 
-    def setOptions(self, options: t_.Sequence[Options]):
-        self._options = options
+    def setOptions(self, axis: int, options: Options):
+        self._options[axis] = options
 
-    def getOptions(self) -> t_.Sequence[Options]:
-        return self._options
+    def getOptions(self, axis: int) -> Options:
+        return self._options[axis]
 
     def setRoiChanged(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile, overwrite: bool):
         idxs = self._seqController.getIndicesForAcquisition(acq)
