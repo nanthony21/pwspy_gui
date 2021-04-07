@@ -2,13 +2,13 @@ import typing as t_
 
 import numpy as np
 from PyQt5.QtCore import QObject
-from pwspy.utility.acquisition import SequencerStep, SeqAcqDir, PositionsStep, TimeStep, SequencerCoordinate
+from pwspy.utility.acquisition import SequencerStep, SeqAcqDir, PositionsStep, TimeStep, SequencerCoordinate, IterableSequencerStep
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp._roiManager import ROIManager
 
 
 class Options(t_.NamedTuple):
-    copyAlongTime: bool
+    copyAlong: bool
     trackMovement: bool
 
 
@@ -17,58 +17,38 @@ class SequenceController:
     def __init__(self, sequence: SequencerStep, acqs: t_.Sequence[SeqAcqDir]):
         self.sequence = sequence
         self.coordMap: t_.Dict[pwsdt.AcqDir, SequencerCoordinate] = {acq.acquisition: acq.sequencerCoordinate for acq in acqs}  # A dictionary of the sequence coords keyed by tha acquisition
-        posSteps = [step for step in sequence.iterateChildren() if isinstance(step, PositionsStep)]
-        assert not len(posSteps) > 1, "Sequences with more than one `MultiplePositionsStep` are not currently supported"
-        timeSteps = [step for step in sequence.iterateChildren() if isinstance(step, TimeStep)]
-        assert not len(timeSteps) > 1, "Sequences with more than one `TimeSeriesStep` are not currently supported"
 
-        self.timeStep = timeSteps[0] if len(timeSteps) > 0 else None
-        self.posStep = posSteps[0] if len(posSteps) > 0 else None
-        self._iterSteps = (self.timeStep, self.posStep)
+        self.iterSteps: t_.Tuple[IterableSequencerStep] = tuple((step for step in sequence.iterateChildren() if isinstance(step, IterableSequencerStep)))
+        self._indices = tuple(0 for step in self.iterSteps)
 
-        self._tIndex = None
-        self._pIndex = None
+    def getIterationNames(self, idx: int) -> t_.Sequence[str]:
+        return tuple((self.iterSteps[idx].getIterationName(i) for i in range(self.iterSteps[idx].stepIterations())))
 
-    def getTimeNames(self) -> t_.Optional[t_.Sequence[str]]:
-        if self.timeStep is None:
-            return None
-        else:
-            return tuple([self.timeStep.getIterationName(i) for i in range(self.timeStep.stepIterations())])
-
-    def getPositionNames(self) -> t_.Optional[t_.Sequence[str]]:
-        if self.posStep is None:
-            return None
-        else:
-            return tuple([self.posStep.getIterationName(i) for i in range(self.posStep.stepIterations())])
-
-    def setCoordinates(self, posIndex: t_.Optional[int], tIndex: t_.Optional[int]) -> pwsdt.AcqDir:
-        acq = self.getAcquisitionForIndices(tIndex, posIndex)
-        self._tIndex = tIndex
-        self._pIndex = posIndex
+    def setCoordinates(self, *idxs: t_.Sequence[int]) -> pwsdt.AcqDir:
+        acq = self.getAcquisitionForIndices(*idxs)
+        self._indices = idxs
         return acq
 
-    def getIndicesForAcquisition(self, acq: t_.Union[SeqAcqDir, pwsdt.AcqDir]) -> t_.Tuple[int, int]:
+    def getIndicesForAcquisition(self, acq: t_.Union[SeqAcqDir, pwsdt.AcqDir]) -> t_.Tuple[int, ...]:
         """Returns the iteration indices of the given acquisition in the form (timeIdx, posIdx)"""
         coord: SequencerCoordinate = acq.sequencerCoordinate if isinstance(acq, SeqAcqDir) else self.coordMap[acq]
-        tIdx = coord.getStepIteration(self.timeStep) if self.timeStep is not None else None
-        pIdx = coord.getStepIteration(self.posStep) if self.posStep is not None else None
-        return tIdx, pIdx
+        idxs = []
+        for step in self.iterSteps:
+            idxs.append(coord.getStepIteration(step))
+        return tuple(idxs)
 
-    def getAcquisitionForIndices(self, tIndex: int, pIndex: int) -> pwsdt.AcqDir:
-        step: SequencerStep = self._iterSteps[np.argmax([len(i.getTreePath()) if i is not None else 0 for i in self._iterSteps])]  # The step that is furthest down the tree path
+    def getAcquisitionForIndices(self, *idxs: int) -> pwsdt.AcqDir:
+        step: SequencerStep = self.iterSteps[np.argmax([len(i.getTreePath()) if i is not None else 0 for i in self.iterSteps])]  # The step that is furthest down the tree path
         coordRange = step.getCoordinate()
-        if self.timeStep is not None:
-            coordRange.setAcceptedIterations(self.timeStep.id, [tIndex])
-        if self.posStep is not None:
-            coordRange.setAcceptedIterations(self.posStep.id, [pIndex])
+        for idx, step in zip(idxs, self.iterSteps):
+            coordRange.setAcceptedIterations(step.id, [idx])
         for acq, coord in self.coordMap.items():
             if coord in coordRange:
                 return acq
-        raise ValueError(f"No acquisition was found to match Position index: {pIndex}, Time index: {tIndex}") # If we got this far then no matching acquisition was found.
+        raise ValueError(f"No acquisition was found to match indices: {idxs}")  # If we got this far then no matching acquisition was found.
 
-    def getCurrentIndices(self) -> t_.Tuple[int, int]:
-        """Of the form (tIndex, pIndex)"""
-        return self._tIndex, self._pIndex
+    def getCurrentIndices(self) -> t_.Tuple[int, ...]:
+        return self._indices
 
 
 class RoiController(QObject):
@@ -78,33 +58,34 @@ class RoiController(QObject):
     def __init__(self, seqController: SequenceController, initialOptions: Options, roiManager: ROIManager, parent: QObject = None):
         super().__init__(parent=parent)
         self._seqController = seqController
-        self._options = initialOptions
+        self._options = tuple(initialOptions for a in seqController.iterSteps)  # One open for each axis.
         self._roiManager = roiManager
 
-    def setOptions(self, options: Options):
+    def setOptions(self, options: t_.Sequence[Options]):
         self._options = options
 
-    def getOptions(self) -> Options:
+    def getOptions(self) -> t_.Sequence[Options]:
         return self._options
 
     def setRoiChanged(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile, overwrite: bool):
-        if not self._options.copyAlongTime:
-            return
-        tIdx, pIdx = self._seqController.getIndicesForAcquisition(acq)
-        if tIdx is None:
-            return
-        for i in range(tIdx+1, self._seqController.timeStep.stepIterations()):
-            acq = self._seqController.getAcquisitionForIndices(i, pIdx)
-            self._roiManager.createRoi(acq, roiFile.getRoi(), roiFile.name, roiFile.number, overwrite=overwrite)
+        idxs = self._seqController.getIndicesForAcquisition(acq)
+        for i, (step, option, idx) in enumerate(zip(self._seqController.iterSteps, self._options, idxs)):
+            if not option.copyAlong:
+                continue
+            for ii in range(idx+1, step.stepIterations()):
+                newIdxs = idxs[:i] + (ii,) + idxs[i+1:]
+                acq = self._seqController.getAcquisitionForIndices(*newIdxs)
+                self._roiManager.createRoi(acq, roiFile.getRoi(), roiFile.name, roiFile.number, overwrite=overwrite)
 
     def deleteRoi(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile):
-        if not self._options.copyAlongTime:
-            return
-        tIdx, pIdx = self._seqController.getIndicesForAcquisition(acq)
-        if tIdx is None:
-            return
-        for i in range(tIdx+1, self._seqController.timeStep.stepIterations()):
-            acq = self._seqController.getAcquisitionForIndices(i, pIdx)
-            roiSpecs = [(roiName, roiNum) for roiName, roiNum, fformat in acq.getRois()]
-            if (roiFile.name, roiFile.number) in roiSpecs:
-                self._roiManager.removeRoi(self._roiManager.getROI(acq, roiFile.name, roiFile.number))
+        idxs = self._seqController.getIndicesForAcquisition(acq)
+
+        for i, (step, option, idx) in enumerate(zip(self._seqController.iterSteps, self._options, idxs)):
+            if not option.copyAlong:
+                continue
+            for ii in range(idx+1, step.stepIterations()):
+                newIdxs = idxs[:i] + (ii,) + idxs[i+1:]
+                acq = self._seqController.getAcquisitionForIndices(*newIdxs)
+                roiSpecs = [(roiName, roiNum) for roiName, roiNum, fformat in acq.getRois()]
+                if (roiFile.name, roiFile.number) in roiSpecs:
+                    self._roiManager.removeRoi(self._roiManager.getROI(acq, roiFile.name, roiFile.number))

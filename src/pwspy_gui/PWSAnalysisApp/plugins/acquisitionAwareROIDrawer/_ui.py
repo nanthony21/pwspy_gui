@@ -175,7 +175,7 @@ class OptionsPanel(QFrame):
             trackMovement=False)  # self._trackImCB.isChecked())
 
     def setOptions(self, options: Options):
-        self._copyTimeCB.setChecked(options.copyAlongTime)
+        self._copyTimeCB.setChecked(options.copyAlong)
         # self._trackImCB.setChecked(options.trackMovement)
 
 
