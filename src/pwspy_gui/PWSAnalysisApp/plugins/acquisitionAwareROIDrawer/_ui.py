@@ -74,7 +74,7 @@ class SeqRoiDrawer(QWidget):
         timeIndex = self._timesBar.getSelectedButtonId() if self._timesBar is not None else None
         acq = self._seqController.setCoordinates(posIndex, timeIndex)
         self._ignoreDrawerSignals = True
-        self._drawer.setDisplayedAcquisition(acq.acquisition)
+        self._drawer.setDisplayedAcquisition(acq)
         self._ignoreDrawerSignals = False
 
     def _handleAnimationEvent(self):

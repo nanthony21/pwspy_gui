@@ -41,7 +41,7 @@ class SequenceController:
         else:
             return tuple([self.posStep.getIterationName(i) for i in range(self.posStep.stepIterations())])
 
-    def setCoordinates(self, posIndex: t_.Optional[int], tIndex: t_.Optional[int]) -> SeqAcqDir:
+    def setCoordinates(self, posIndex: t_.Optional[int], tIndex: t_.Optional[int]) -> pwsdt.AcqDir:
         acq = self.getAcquisitionForIndices(tIndex, posIndex)
         self._tIndex = tIndex
         self._pIndex = posIndex
@@ -54,7 +54,7 @@ class SequenceController:
         pIdx = coord.getStepIteration(self.posStep) if self.posStep is not None else None
         return tIdx, pIdx
 
-    def getAcquisitionForIndices(self, tIndex: int, pIndex: int) -> SeqAcqDir:
+    def getAcquisitionForIndices(self, tIndex: int, pIndex: int) -> pwsdt.AcqDir:
         step: SequencerStep = self._iterSteps[np.argmax([len(i.getTreePath()) if i is not None else 0 for i in self._iterSteps])]  # The step that is furthest down the tree path
         coordRange = step.getCoordinate()
         if self.timeStep is not None:
@@ -94,8 +94,8 @@ class RoiController(QObject):
         if tIdx is None:
             return
         for i in range(tIdx+1, self._seqController.timeStep.stepIterations()):
-            sacq = self._seqController.getAcquisitionForIndices(i, pIdx)
-            self._roiManager.createRoi(sacq.acquisition, roiFile.getRoi(), roiFile.name, roiFile.number, overwrite=overwrite)
+            acq = self._seqController.getAcquisitionForIndices(i, pIdx)
+            self._roiManager.createRoi(acq, roiFile.getRoi(), roiFile.name, roiFile.number, overwrite=overwrite)
 
     def deleteRoi(self, acq: pwsdt.AcqDir, roiFile: pwsdt.RoiFile):
         if not self._options.copyAlongTime:
@@ -104,7 +104,7 @@ class RoiController(QObject):
         if tIdx is None:
             return
         for i in range(tIdx+1, self._seqController.timeStep.stepIterations()):
-            sacq = self._seqController.getAcquisitionForIndices(i, pIdx)
-            roiSpecs = [(roiName, roiNum) for roiName, roiNum, fformat in sacq.acquisition.getRois()]
+            acq = self._seqController.getAcquisitionForIndices(i, pIdx)
+            roiSpecs = [(roiName, roiNum) for roiName, roiNum, fformat in acq.getRois()]
             if (roiFile.name, roiFile.number) in roiSpecs:
-                self._roiManager.removeRoi(self._roiManager.getROI(sacq.acquisition, roiFile.name, roiFile.number))
+                self._roiManager.removeRoi(self._roiManager.getROI(acq, roiFile.name, roiFile.number))
