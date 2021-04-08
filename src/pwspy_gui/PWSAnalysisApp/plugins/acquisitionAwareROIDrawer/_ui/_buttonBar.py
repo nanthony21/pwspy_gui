@@ -1,6 +1,8 @@
 import typing as t_
+
+from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QFrame, QButtonGroup, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QFrame, QButtonGroup, QHBoxLayout, QPushButton, QScrollArea, QWidget, QSizePolicy
 
 
 class ButtonBar(QFrame):
@@ -8,7 +10,7 @@ class ButtonBar(QFrame):
 
     def __init__(self, items: t_.Sequence[str], parent=None):
         super().__init__(parent=parent)
-        self.setFrameStyle(QFrame.Panel)
+        # self.setFrameStyle(QFrame.Panel)
         self._bGroup = QButtonGroup(self)
         l = QHBoxLayout(self)
         for i, itemName in enumerate(items):
@@ -20,7 +22,22 @@ class ButtonBar(QFrame):
         self._bGroup.buttons()[0].click()  # Make sure at least one button is selected.
         self._bGroup.buttonClicked.connect(self._buttonSelected)
         l.setSpacing(1)  # Move buttons close together
-        self.setLayout(l)
+        l.setContentsMargins(0, 0, 0, 0)
+        w = QFrame(self)
+        w.setFrameStyle(QFrame.Box)
+        w.setLayout(l)
+        scrollArea = QScrollArea(parent=self)
+        scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scrollArea.setStyleSheet("""QScrollBar:horizontal {
+             height:10px;     
+         }""")
+        scrollArea.setWidget(w)
+        scrollArea.setFixedHeight(10 + w.height())
+        ll = QHBoxLayout()
+        ll.setContentsMargins(0, 0, 0, 0)
+        ll.addWidget(scrollArea)
+        self.setLayout(ll)
+
 
     def _buttonSelected(self, btn):
         self._selectedButtonId = self._bGroup.id(btn)
