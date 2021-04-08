@@ -30,7 +30,7 @@ if typing.TYPE_CHECKING:
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QScrollArea, QGridLayout, QLineEdit, QLabel, QGroupBox, QHBoxLayout, QWidget, QRadioButton, \
-    QFrame, QCheckBox
+    QFrame, QCheckBox, QDoubleSpinBox
 
 from pwspy.analysis.pws import PWSAnalysisSettings
 from pwspy_gui.PWSAnalysisApp import applicationVars
@@ -112,20 +112,29 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
         layout = QGridLayout()
         layout.setContentsMargins(5, 1, 5, 5)
         _ = layout.addWidget
+
         orderLabel = QLabel("Filter Order")
         self.filterOrder = QHSpinBox()
         self.filterOrder.setRange(0, 6)
-        self.filterOrder.setToolTip("A lowpass filter is applied to the spectral signal to reduce noise. This determines the `order` of the digital filter.")
+        self.filterOrder.setToolTip("A low-pass filter is applied to the spectral signal to reduce noise. This determines the `order` of the digital filter.")
         orderLabel.setToolTip(self.filterOrder.toolTip())
         cutoffLabel = QLabel("Cutoff Freq.")
-        self.filterCutoff = QHDoubleSpinBox()
+        self.filterCutoff: QDoubleSpinBox = QHDoubleSpinBox()
         self.filterCutoff.setToolTip("The frequency in units of 1/wavelength for the filter cutoff.")
+        self.filterCutoff.setDecimals(3)  # Greater precision than default
         cutoffLabel.setToolTip(self.filterCutoff.toolTip())
-        _(orderLabel, 0, 0, 1, 1)
-        _(self.filterOrder, 0, 1, 1, 1)
-        _(cutoffLabel, 1, 0, 1, 1)
-        _(self.filterCutoff, 1, 1, 1, 1)
-        _(QLabel("nm<sup>-1</sup>"), 1, 2, 1, 1)
+        self.filterCheckbox = QCheckBox("Low-pass Filtering", self)
+        def stateChange(state: bool):
+            self.filterOrder.setEnabled(state)
+            self.filterCutoff.setEnabled(state)
+        self.filterCheckbox.stateChanged.connect(stateChange)
+        self.filterCheckbox.setChecked(True)  # This is just to initialize the proper state
+        _(self.filterCheckbox, 0, 0, 1, 2)
+        _(orderLabel, 1, 0, 1, 1)
+        _(self.filterOrder, 1, 1, 1, 1)
+        _(cutoffLabel, 2, 0, 1, 1)
+        _(self.filterCutoff, 2, 1, 1, 1)
+        _(QLabel("nm<sup>-1</sup>"), 2, 2, 1, 1)
         self.signalPrep.setLayout(layout)
         self._layout.addWidget(self.signalPrep, row, 0, 1, 2)
 
@@ -142,10 +151,17 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
         self.wavelengthStop.setToolTip("Sometimes the beginning and end of the spectrum can have very high noise. For this reason we crop the data before analysis.")
         self.wavelengthStart.setRange(300, 800)
         self.wavelengthStop.setRange(300, 800)
-        _(QLabel("Start"), 0, 0)
-        _(QLabel("Stop"), 0, 1)
-        _(self.wavelengthStart, 1, 0)
-        _(self.wavelengthStop, 1, 1)
+        self.croppingCheckbox = QCheckBox("Enable Cropping", self)
+        def cropStateChanged(state: bool):
+            self.wavelengthStop.setEnabled(state)
+            self.wavelengthStart.setEnabled(state)
+        self.croppingCheckbox.stateChanged.connect(cropStateChanged)
+        self.croppingCheckbox.setChecked(True)  # This is just to initialze the propert state.
+        _(self.croppingCheckbox, 0, 0, 1, 2)
+        _(QLabel("Start"), 1, 0)
+        _(QLabel("Stop"), 1, 1)
+        _(self.wavelengthStart, 2, 0)
+        _(self.wavelengthStop, 2, 1)
         self.cropping.setLayout(layout)
         self._layout.addWidget(self.cropping, row, 2, 1, 2)
         row += 1
@@ -200,12 +216,20 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
         self._frame.setFixedHeight(height)
 
     def loadFromSettings(self, settings: PWSAnalysisSettings):
+        if settings.filterCutoff is None:
+            self.filterCheckbox.setChecked(False)
+        else:
+            self.filterCheckbox.setChecked(True)
+            self.filterCutoff.setValue(settings.filterCutoff)
         self.filterOrder.setValue(settings.filterOrder)
-        self.filterCutoff.setValue(settings.filterCutoff)
         self.polynomialOrder.setValue(settings.polynomialOrder)
         self.extraReflection.loadFromSettings(settings.numericalAperture, settings.referenceMaterial, settings.extraReflectanceId)
-        self.wavelengthStop.setValue(settings.wavelengthStop)
-        self.wavelengthStart.setValue(settings.wavelengthStart)
+        if settings.wavelengthStop is None:
+            self.croppingCheckbox.setChecked(False)
+        else:
+            self.croppingCheckbox.setChecked(True)
+            self.wavelengthStop.setValue(settings.wavelengthStop)
+            self.wavelengthStart.setValue(settings.wavelengthStart)
         self.advanced.setCheckState(2 if settings.skipAdvanced else 0)
         self.autoCorrStopIndex.setValue(settings.autoCorrStopIndex)
         self.minSubCheckBox.setCheckState(2 if settings.autoCorrMinSub else 0)
@@ -229,12 +253,15 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
             raise ValueError("The selected reference acquisition has no valid PWS data.")
         if len(cellMeta) == 0:
             raise ValueError("No valid PWS acquisitions were selected.")
+        cutoff = self.filterCutoff.value() if self.filterCheckbox.checkState() else None
+        wvStart = self.wavelengthStart.value() if self.croppingCheckbox.checkState() else None
+        wvStop = self.wavelengthStop.value() if self.croppingCheckbox.checkState() else None
         return PWSRuntimeAnalysisSettings(settings=PWSAnalysisSettings(filterOrder=self.filterOrder.value(),
-                                                                       filterCutoff=self.filterCutoff.value(),
+                                                                       filterCutoff=cutoff,
                                                                        polynomialOrder=self.polynomialOrder.value(),
                                                                        referenceMaterial=refMaterial,
-                                                                       wavelengthStart=self.wavelengthStart.value(),
-                                                                       wavelengthStop=self.wavelengthStop.value(),
+                                                                       wavelengthStart=wvStart,
+                                                                       wavelengthStop=wvStop,
                                                                        skipAdvanced=self.advanced.checkState() != 0,
                                                                        autoCorrMinSub=self.minSubCheckBox.checkState() != 0,
                                                                        autoCorrStopIndex=self.autoCorrStopIndex.value(),

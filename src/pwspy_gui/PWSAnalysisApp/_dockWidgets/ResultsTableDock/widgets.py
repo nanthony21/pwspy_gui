@@ -45,8 +45,8 @@ class ResultsTableItem:
         self.cellPathLabel = QTableWidgetItem(cellPath)
         self.cellNumLabel = NumberTableWidgetItem(cellNumber)
         # Generic results
-        self.roiNameLabel = QTableWidgetItem(results.generic.roi.name)
-        self.roiNumLabel = NumberTableWidgetItem(results.generic.roi.number)
+        self.roiNameLabel = QTableWidgetItem(results.generic.roiFile.name)
+        self.roiNumLabel = NumberTableWidgetItem(results.generic.roiFile.number)
         self.roiAreaLabel = NumberTableWidgetItem(results.generic.roiArea)
         # PWS related results
         pws = results.pws

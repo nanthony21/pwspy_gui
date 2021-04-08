@@ -21,7 +21,7 @@ from typing import List
 
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QScrollArea, QVBoxLayout, QPushButton, QMessageBox, \
-    QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame
+    QLabel, QLineEdit, QSizePolicy, QButtonGroup, QFrame, QApplication
 
 import pwspy.dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting import RoiDrawer
@@ -84,7 +84,7 @@ class PlottingDock(QDockWidget):
         frame.setLayout(l)
         self._refreshButton = QPushButton("Refresh")
         self._refreshButton.released.connect(lambda: self._generatePlots(self.selector.getSelectedCellMetas()))
-        self._roiButton = QPushButton("Draw Roi's")
+        self._roiButton = QPushButton("Draw ROI's")
         self._roiButton.released.connect(self._startRoiDrawing)
         label = QLabel("Analysis Name")
         label.setMaximumHeight(20)
@@ -101,7 +101,6 @@ class PlottingDock(QDockWidget):
 
         self._enableAnalysisPlottingButtons('false')
 
-
     def _addPlots(self, plots: List[QWidget]):
         self._plots.extend(plots)
         [self._scrollContents.layout().addWidget(plot) for plot in plots]
@@ -115,9 +114,7 @@ class PlottingDock(QDockWidget):
         metadatas = [(p.acq, p.analysis) for p in self._plots]
         if len(metadatas) > 0:  # Otherwise we crash
             try:
-                self.roiDrawer = RoiDrawer(metadatas, self)
-                self.roiDrawer.roiCreated.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
-                self.roiDrawer.roiDeleted.connect(lambda acq, roi: self.selector.refreshCellItems([acq]))
+                self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, self)
             except Exception as e:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self, "Error", "An error occured. Please see the log file.")

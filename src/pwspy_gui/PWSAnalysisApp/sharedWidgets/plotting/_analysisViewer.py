@@ -16,27 +16,41 @@
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
 
 from __future__ import annotations
-from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QComboBox, QWidget, QVBoxLayout
 from typing import Optional
 import typing as t_
+import pwspy.dataTypes as pwsdt
+from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._widgets import AnalysisPlotter
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._roiPlot import RoiPlot
 
 
-class AnalysisViewer(AnalysisPlotter, RoiPlot):
+class AnalysisViewer(AnalysisPlotter, QWidget):
     """This class is a window that provides convenient viewing of a pws acquisition, analysis, and related images.
     It expands upon the functionality of `BigPlot` which handles ROIs but not analysis images."""
-    def __init__(self, metadata: AcqDir, analysisLoader: AnalysisPlotter.AnalysisResultsComboType, title: str, parent=None,
+    def __init__(self, metadata: pwsdt.AcqDir, analysisLoader: AnalysisPlotter.AnalysisResultsComboType, title: str, roiManager: ROIManager, parent=None,
                  initialField=AnalysisPlotter.PlotFields.Thumbnail, flags=None):
-        RoiPlot.__init__(self, metadata, metadata.getThumbnail(), parent=parent, flags=flags)
+        if flags is not None:
+            QWidget.__init__(self, parent=parent, flags=flags)
+        else:
+            QWidget.__init__(self, parent=parent)
         AnalysisPlotter.__init__(self, metadata, analysisLoader, initialField=initialField)
+
+        self.roiPlot = RoiPlot(metadata, metadata.getThumbnail(), roiManager=roiManager, parent=self)
 
         self.setWindowTitle(title)
         self.analysisCombo = QComboBox(self)
         self._populateFields()
-        self.layout().itemAt(0).insertWidget(0, self.analysisCombo)
+
+        self.roiPlot.layout().itemAt(0).insertWidget(0, self.analysisCombo)  # This is sketchy, oh well.
+
+        l = QVBoxLayout()
+        l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(self.roiPlot)
+        self.setLayout(l)
+
         self.changeData(self.analysisField)
 
     def _populateFields(self):
@@ -80,7 +94,7 @@ class AnalysisViewer(AnalysisPlotter, RoiPlot):
         super().changeData(field)
         if self.analysisCombo.currentText() != field.name:
             self.analysisCombo.setCurrentText(field.name)
-        self.setImageData(self.data)
+        self.roiPlot.setImageData(self.data)
 
     def setMetadata(self, md: AcqDir, analysis: Optional[ConglomerateAnalysisResults] = None):
         """Change this widget to display data for a different acquisition and optionally an analysis."""
@@ -89,16 +103,5 @@ class AnalysisViewer(AnalysisPlotter, RoiPlot):
         except ValueError:  # Trying to set new metadata may result in an error if the new analysis/metadata can't plot the currently set analysisField
             self.changeData(self.PlotFields.Thumbnail)  # revert back to thumbnail which should always be possible
             super().setMetadata(md, analysis)
-        self.setRoiPlotMetadata(md)
+        self.roiPlot.setMetadata(md)
         self._populateFields()
-
-if __name__ == '__main__':
-    fPath = r'G:\Aya_NAstudy\matchedNAi_largeNAc\cells\Cell2'
-    from pwspy.dataTypes import AcqDir
-    from PyQt5.QtWidgets import QApplication
-    acq = AcqDir(fPath)
-    import sys
-    app = QApplication(sys.argv)
-    b = AnalysisViewer(acq, ConglomerateAnalysisResults(None, None), "Test")
-    b.show()
-    sys.exit(app.exec())

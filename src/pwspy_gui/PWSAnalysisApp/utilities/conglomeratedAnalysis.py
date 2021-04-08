@@ -55,14 +55,14 @@ class ConglomerateCompiler:
         self.dyn = DynamicsRoiCompiler(self.settings.dyn)
         self.generic = GenericRoiCompiler(self.settings.generic)
 
-    def run(self, results: ConglomerateAnalysisResults, roi: Roi) -> Tuple[ConglomerateCompilerResults, List[warnings.AnalysisWarning]]:
+    def run(self, results: ConglomerateAnalysisResults, roiFile: RoiFile) -> Tuple[ConglomerateCompilerResults, List[warnings.AnalysisWarning]]:
         if results.pws is not None:
-            pwsResults, pwsWarnings = self.pws.run(results.pws, roi)
+            pwsResults, pwsWarnings = self.pws.run(results.pws, roiFile)
         else:
             pwsResults, pwsWarnings = None, []
         if results.dyn is not None:
-            dynResults, dynWarnings = self.dyn.run(results.dyn, roi)
+            dynResults, dynWarnings = self.dyn.run(results.dyn, roiFile)
         else:
             dynResults, dynWarnings = None, []
-        genResults = self.generic.run(roi)
+        genResults = self.generic.run(roiFile)
         return ConglomerateCompilerResults(pwsResults, dynResults, genResults), pwsWarnings + dynWarnings

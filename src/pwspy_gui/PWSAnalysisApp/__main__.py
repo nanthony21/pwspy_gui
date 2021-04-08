@@ -85,27 +85,24 @@ def main():
     fHandler = logging.FileHandler(os.path.join(applicationVars.dataDirectory, f'log{datetime.now().strftime("%d%m%Y%H%M%S")}.txt'))
     fHandler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s %(name)s.%(funcName)s(%(lineno)d) - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
     logger.addHandler(fHandler)
+    logger.setLevel(logging.INFO)
     if debugMode:
-        logger.setLevel(logging.DEBUG)
+        logging.getLogger("pwspy_gui").setLevel(logging.DEBUG)
+        logging.getLogger("pwspy").setLevel(logging.DEBUG)
         logger.info("Logger set to debug mode.")
-    else:
-        logger.setLevel(logging.INFO)
-        
+
     try:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"  # TODO replace these options with proper high dpi handling. no pixel specific widths.
         QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
         logger.debug("About to construct `PWSApp`")
         app = PWSApp(sys.argv)
         logger.debug("Finished constructing `PWSApp`")
+
         #Testing script
         # app.changeDirectory(r'\\backmanlabnas.myqnapcloud.com\home\Year3\zstack_focusSensitivity\again', False)
-        # app.setSelectedCells([app.getLoadedCells()[0]])
+        # app.setSelectedCells(app.getLoadedCells()[:3])
         # app.plotSelectedCells()
         # app.window.plots._startRoiDrawing()
-
-        # import qdarkstyle
-        # dark_stylesheet = qdarkstyle.load_stylesheet_pyqt5()
-        # app.setStyleSheet(dark_stylesheet)
 
         if not isIpython():  # IPython runs its own QApplication so we handle things slightly different.
             sys.exit(app.exec_())

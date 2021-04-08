@@ -4,6 +4,7 @@ import warnings
 import logging
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QApplication, QInputDialog, QMessageBox
+from pwspy_gui.PWSAnalysisApp.App import PWSApp
 
 from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPlugin
 import os
@@ -14,7 +15,7 @@ from ._ui import SeqRoiDrawer
 from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
 from pwspy.utility.acquisition.steps import SequencerStep
 from pwspy.utility.acquisition import RuntimeSequenceSettings
-from pwspy.dataTypes import AcqDir
+import pwspy.dataTypes as pwsdt
 if t_.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
 
@@ -30,7 +31,7 @@ class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
         self._selector = selector
         self._parentWidget = parent
 
-    def onCellsSelected(self, cells: typing.List[pwsdt.AcqDir]):
+    def onCellsSelected(self, cells: t_.List[pwsdt.AcqDir]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 
@@ -38,7 +39,7 @@ class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
         """This method will be called when the CellSelector indicates that it has had a new reference selected."""
         pass
 
-    def onNewCellsLoaded(self, cells: typing.List[pwsdt.AcqDir]):
+    def onNewCellsLoaded(self, cells: t_.List[pwsdt.AcqDir]):
         """This method will be called when the CellSelector indicates that new cells have been loaded to the selector."""
         pass
 
@@ -70,14 +71,14 @@ class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
                 if anName in acq.dynamics.getAnalyses():
                     dynAn = acq.dynamics.loadAnalysis(anName)
             mds.append((sacq, (pwsAn, dynAn)))
-        self._ui = SeqRoiDrawer(controller, mds, parent=self._parentWidget)
+        self._ui = SeqRoiDrawer(controller, mds, roiManager=PWSApp.instance().roiManager, parent=self._parentWidget)
         self._ui.show()
 
-    def additionalColumnNames(self) -> typing.Sequence[str]:
+    def additionalColumnNames(self) -> t_.Sequence[str]:
         """The header names for each column."""
         return tuple()
 
-    def getTableWidgets(self, acq: pwsdt.AcqDir) -> typing.Sequence[QWidget]:
+    def getTableWidgets(self, acq: pwsdt.AcqDir) -> t_.Sequence[QWidget]:
         """provide a widget for each additional column to represent `acq`"""
         return tuple()
 

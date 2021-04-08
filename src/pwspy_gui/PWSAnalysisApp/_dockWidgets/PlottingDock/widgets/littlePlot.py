@@ -21,7 +21,7 @@ import numpy as np
 from PyQt5 import QtCore
 from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtWidgets import QMenu, QAction, QWidget, QLabel, QVBoxLayout
+from PyQt5.QtWidgets import QMenu, QAction, QWidget, QLabel, QVBoxLayout, QApplication
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
 from pwspy.dataTypes import AcqDir, ImCube
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._widgets import AnalysisPlotter
@@ -57,7 +57,7 @@ class LittlePlot(AnalysisPlotter, QWidget):
 
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
-            viewer = AnalysisViewer(metadata=self.acq, analysisLoader=self.analysis, title=self.title, parent=self, initialField=self.analysisField, flags=QtCore.Qt.Window)
+            viewer = AnalysisViewer(metadata=self.acq, analysisLoader=self.analysis, title=self.title, roiManager=QApplication.instance().roiManager, parent=self, initialField=self.analysisField, flags=QtCore.Qt.Window)
             viewer.show()
 
 

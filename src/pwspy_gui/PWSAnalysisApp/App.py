@@ -29,6 +29,7 @@ import psutil
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
 from pwspy_gui import __version__ as version
+from pwspy_gui.PWSAnalysisApp._roiManager import _DefaultROIManager, ROIManager
 from pwspy_gui.PWSAnalysisApp.utilities import BlinderDialog, RoiConverter
 from .dialogs import AnalysisSummaryDisplay
 from ._taskManagers.analysisManager import AnalysisManager
@@ -41,21 +42,24 @@ import typing
 import pwspy.dataTypes as pwsdt
 
 
-class PWSApp(QApplication):  # TODO add a scriptable interface to load files, open roi window, run analysis etc.
+class PWSApp(QApplication):
     def __init__(self, args):
         logger = logging.getLogger(__name__)
         logger.debug("About to call PWSApp superclass constructor")
         super().__init__(args)
         logger.debug("PWSApp superclass constructor is finished")
+
+        self.roiManager: ROIManager = _DefaultROIManager()
+
         self.setApplicationName(f"PWS Analysis v{version.split('-')[0]}")
         splash = QSplashScreen(QPixmap(os.path.join(resources, 'pwsLogo.png')))
         splash.show()
         logger.debug("Initialize ERManager")
         self.ERManager = ERManager(applicationVars.extraReflectionDirectory)
         logger.debug("Finish constructing ERManager")
-        self.window = PWSWindow(self.ERManager)
-        logger.debug("Finish constructing window")
+        self.window = PWSWindow(self.ERManager, self.roiManager)
         splash.finish(self.window)
+        logger.debug("Finish constructing window")
         self.anMan = AnalysisManager(self)
         self.window.runAction.connect(self.anMan.runList)
         availableRamGigs = psutil.virtual_memory().available / 1024**3
@@ -71,6 +75,12 @@ class PWSApp(QApplication):  # TODO add a scriptable interface to load files, op
         self.window.blindAction.triggered.connect(self.openBlindingDialog)
         self.window.roiConvertAction.triggered.connect(self.convertRois)
         self.workingDirectory = None
+
+        # import qdarkstyle  # This looks bad
+        # dark_stylesheet = qdarkstyle.load_stylesheet_pyqt5()
+        # self.setStyleSheet(dark_stylesheet)
+
+        self.window.show()
 
     ### API
     def changeDirectory(self, directory: str, recursive: bool):
@@ -129,3 +139,9 @@ class PWSApp(QApplication):  # TODO add a scriptable interface to load files, op
             analysisName = ''
         self.window.plots.setAnalysisName(analysisName)
         self.window.plots.refreshPlots()
+
+    def __del__(self):
+        try:
+            self.roiManager.close()
+        except AttributeError:  # If an error occured in the constructor the attribute may have never been created.
+            pass
