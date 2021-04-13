@@ -5,7 +5,7 @@ from PyQt5.QtCore import QSize, pyqtSignal
 from PyQt5.QtGui import QTextDocument, QAbstractTextDocumentLayout, QPalette
 from PyQt5.QtWidgets import QStyledItemDelegate, QWidget, QStyleOptionViewItem, QStyle, QGridLayout, QTableWidget, \
     QTableWidgetItem, QAbstractItemView, QSizePolicy, QApplication
-from pwspy.utility.acquisition.steps import SequencerStep, CoordSequencerStep, StepTypeNames, ContainerStep
+from pwspy.utility.acquisition.steps import SequencerStep, IterableSequencerStep, StepTypeNames, ContainerStep
 
 
 class IterationRangeEditor(QWidget):
@@ -49,7 +49,7 @@ class IterationRangeEditor(QWidget):
         l.setRowStretch(1, 1)  # Allow the actual wigdets to sit at the top of the layout without getting stretched out.
         self.setLayout(l)
 
-    def setFromStep(self, step: CoordSequencerStep) -> None:
+    def setFromStep(self, step: IterableSequencerStep) -> None:
         """
         Update the appearance and labels of this widget based on the `Step` provided as input.
 
@@ -152,7 +152,7 @@ class IterationRangeDelegate(HTMLDelegate):
         self.editor = None
 
     def createEditor(self, parent: QWidget, option: QStyleOptionViewItem, index: QtCore.QModelIndex) -> QWidget:
-        if isinstance(index.internalPointer(), CoordSequencerStep):
+        if isinstance(index.internalPointer(), IterableSequencerStep):
             widg = IterationRangeEditor(parent)
             widg.setFromStep(index.internalPointer())
             widg.resize(option.rect.size())
@@ -163,7 +163,7 @@ class IterationRangeDelegate(HTMLDelegate):
 
     def setModelData(self, editor: IterationRangeEditor, model: QtCore.QAbstractItemModel, index: QtCore.QModelIndex) -> None:
         step: SequencerStep = index.internalPointer()
-        if isinstance(step, CoordSequencerStep):
+        if isinstance(step, IterableSequencerStep):
             coordRange = (step.id, editor.getSelection())
             step.setData(QtCore.Qt.EditRole, coordRange)
         self._editing = None
@@ -176,7 +176,7 @@ class IterationRangeDelegate(HTMLDelegate):
         return super().editorEvent(event, model, option, index)
 
     def sizeHint(self, option: QStyleOptionViewItem, index: QtCore.QModelIndex) -> QtCore.QSize:
-        if isinstance(index.internalPointer(), CoordSequencerStep) and self._editing == index:
+        if isinstance(index.internalPointer(), IterableSequencerStep) and self._editing == index:
             self.initStyleOption(option, index)
             editor = self.createEditor(None, option, index)
             s = editor.sizeHint()
@@ -185,7 +185,7 @@ class IterationRangeDelegate(HTMLDelegate):
             return super().sizeHint(option, index)
 
     def displayText(self, value: typing.Any, locale: QtCore.QLocale) -> str:
-        if isinstance(value, CoordSequencerStep):
+        if isinstance(value, IterableSequencerStep):
             itRangeCoord: typing.Tuple[int, typing.Sequence[int]] = value.data(QtCore.Qt.EditRole)
             if itRangeCoord is None:
                 selectedIterations = []  # TODO this happens for steps where we haven't assigned any iterations (non iterable step types). Should we have a `None` here?
