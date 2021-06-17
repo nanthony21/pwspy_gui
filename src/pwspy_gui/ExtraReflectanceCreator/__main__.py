@@ -49,10 +49,14 @@ class ERApp(QApplication):
         settings.setValue("workingDirectory", wDir)
         self.checkDataDir()
 
-        self.workflow = ERWorkFlow(wDir, self.gDriveDir)
-        self.erManager = ERManager(self.gDriveDir)
-        self.window = MainWindow(self.erManager)
-        self.connectWindowToWorkflow()
+        try:
+            self.workflow = ERWorkFlow(wDir, self.gDriveDir)
+            self.erManager = ERManager(self.gDriveDir)
+            self.window = MainWindow(self.erManager)
+            self.connectWindowToWorkflow()
+        except Exception as e:
+            QMessageBox.warning(None, "Error", repr(e))
+            raise e
 
     def connectWindowToWorkflow(self):
         for k, v in self.workflow.fileStruct.items():
@@ -126,7 +130,7 @@ def main():
     sys.excepthook = exception_hook
 
     logger = logging.getLogger()  # We use the root logger so that all loggers in pwspy will be captured.
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     logger.addHandler(logging.StreamHandler(sys.stdout))
     appDataPath = os.path.join(appPath, 'ExtraReflectanceCreatorData')
     if not os.path.exists(appDataPath):
