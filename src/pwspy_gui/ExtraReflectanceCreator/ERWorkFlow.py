@@ -146,7 +146,6 @@ class ERWorkFlow:
 
     def plot(self, numericalAperture: float, saveToPdf: bool = False, saveDir: str = None):
         cubes = self.cubes
-        settings = set(cubes['setting'])  # Unique setting values
         materials = set(cubes['material'])
         theoryR = er.getTheoreticalReflectances(materials,
                                                 cubes['cube'].iloc[0].wavelengths, numericalAperture)  # Theoretical reflectances
@@ -173,24 +172,23 @@ class ERWorkFlow:
             matCombos = er.generateMaterialCombos(materials)
             combos = er.getAllCubeCombos(matCombos, cubes)
             erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
-            self.plotnds = [PlotNd(rExtraDict[k][0], title=k,
+            plotnds = [PlotNd(rExtraDict[k][0], title=k,
                             indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
                                      erCube.wavelengths]) for k in rExtraDict.keys()]
             logger = logging.getLogger(__name__)
             logger.info(f"Final data max is {erCube.data.max()}")
             logger.info(f"Final data min is {erCube.data.min()}")
-            self.figs.extend(self.plotnds) # keep track of opened figures.
+            self.figs.extend(plotnds) # keep track of opened figures.
             saveName = f'{self.currDir}-{setting}'
             dialog = IndexInfoForm(f'{self.currDir}-{setting}', erCube.metadata.idTag)
-            self.saveParams = {'dlg': dialog, 'ercube': erCube, 'savename': saveName} #We save this to a varaible so it can be accessed by the callback for an accepted dialog.
-            dialog.accepted.connect(self.saveERDialogAccepted)
-            dialog.show()
 
-    def saveERDialogAccepted(self):
-        dialog = self.saveParams['dlg']; erCube = self.saveParams['ercube']; saveName = self.saveParams['savename']
-        erCube.metadata.inheritedMetadata['description'] = dialog.description
-        erCube.toHdfFile(self.homeDir, saveName)
-        self.updateIndex(saveName, erCube.metadata.idTag, dialog.description, erCube.metadata.dirName2Directory('', saveName))
+            def accepted(dialog, erCube, saveName):
+                erCube.metadata.inheritedMetadata['description'] = dialog.description
+                erCube.toHdfFile(self.homeDir, saveName)
+                self.updateIndex(saveName, erCube.metadata.idTag, dialog.description, erCube.metadata.dirName2Directory('', saveName))
+
+            dialog.accepted.connect(lambda dlg=dialog, ercube=erCube, savename=saveName: accepted(dlg, ercube, savename))
+            dialog.show()
 
     def updateIndex(self, saveName: str, idTag: str, description: str, filePath: str):
         with open(os.path.join(self.homeDir, 'index.json'), 'r') as f:
