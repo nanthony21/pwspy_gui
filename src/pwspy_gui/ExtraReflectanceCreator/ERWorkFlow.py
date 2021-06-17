@@ -40,60 +40,75 @@ import logging
 from mpl_qt_viz.visualizers import PlotNd
 
 
-def _splitPath(path: str) -> List[str]:
-    """Utility function. Given a string representing a file path this function will return a list of strings, each list
-    item representing a single level of the file path."""
-    folders = []
-    while 1:
-        path, folder = os.path.split(path)
-        if folder != "":
-            folders.append(folder)
-        else:
-            if path != "":
-                folders.append(path)
-            break
-    return folders
-
-
 def scanDirectory(directory: str) -> Dict[str, Any]:
+    """
+    Scan a folder for data in the format expected by this application. We expect multiple layers of subfolders.
+    Layer 1: Folders named by date.
+    Layer 2: Folders named by material imaged. Must be supported by pwspy.utility.reflectance.reflectanceHelper and in the `matMap` variable.
+    Layer 3: "Cell{x}" folders each containing a single acquisition.
+
+    Args:
+        directory: The file path to be scanned.
+
+    Returns:
+        A dictionary containing a dataframe of values and a camera correction object. TODO this is bad.
+    """
     try:
         cam = CameraCorrection.fromJsonFile(os.path.join(directory, 'cameraCorrection.json'))
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.exception(e)
-        raise Exception(f"Could not load a camera correction at {directory}")
+        raise Exception(f"Could not load a camera correction at {directory}. Please add a `cameraCorrection.json` file to describe how to correct for dark counts and nonlinearity.")
     files = glob(os.path.join(directory, '*', '*', 'Cell*'))
     rows = []
-    matMap = {'air': Material.Air, 'water': Material.Water, 'ipa': Material.Ipa, 'ethanol': Material.Ethanol, 'glass': Material.Glass}
+    matMap = {'air': Material.Air, 'water': Material.Water, 'ipa': Material.Ipa, 'ethanol': Material.Ethanol, 'glass': Material.Glass,
+              'methanol': Material.Methanol}
     for file in files:
-        filelist = _splitPath(file)
+        filelist = os.path.normpath(file).split(os.path.sep)  # Split file into components.
         s = filelist[2]
         m = matMap[filelist[1]]
-        file = AcqDir(file).pws.filePath # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the acqDir class helps us abstract that out and be compatible with both.
+        file = AcqDir(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the acqDir class helps us abstract that out and be compatible with both.
         rows.append({'setting': s, 'material': m, 'cube': file})
     df = pd.DataFrame(rows)
     return {'dataFrame': df, 'camCorrection': cam}
 
 
-def _processIm(im: ImCube, args) -> ImCube:
-    im.correctCameraEffects(**args)
+def _processIm(im: ImCube, kwargs) -> ImCube:
+    """
+    This processor function may be run in parallel to pre-process each raw image.
+
+    Args:
+        im: The `ImCube` to be preprocessed.
+        kwargs: These keyword arguments are passed to `ImCube.correctCameraEffects`
+
+    Returns:
+        The same ImCube that was provided as input.
+    """
+    im.correctCameraEffects(**kwargs)
     im.normalizeByExposure()
     try:
         im.filterDust(0.8)  # in microns
     except ValueError:
         logger = logging.getLogger(__name__)
         logger.warning("No pixel size metadata found. assuming a gaussian filter radius of 6 pixels = 1 sigma.")
-        im.filterDust(6, pixelSize=1) #Do the filtering in units of pixels if no auto pixelsize was found
+        im.filterDust(6, pixelSize=1)  # Do the filtering in units of pixels if no auto pixelsize was found
     return im
 
 
 class ERWorkFlow:
-    """This class serves as an adapter between the complication operations available in the pwspy.utility.relfection.extraReflectance module and the UI of the ERCreator app."""
+    """
+    This class serves as an adapter between the complicated operations available in the pwspy.utility.relfection.extraReflectance
+    module and the UI of the ERCreator app.
+
+    Args:
+        workingDir: The folder to scan for images. Each subfolder of workingDir should be named by the corresponding system / configuration.
+            The contents of each subfolder should align with the description in `scanDirectory`
+        homeDir: TODO
+    """
     def __init__(self, workingDir: str, homeDir: str):
         self.cubes = self.fileStruct = self.df = self.cameraCorrection = self.currDir = self.plotnds = self.anims = None
         self.figs = []
         self.homeDir = homeDir
-        # generateFileStruct:
         folders = [i for i in glob(os.path.join(workingDir, '*')) if os.path.isdir(i)]
         settings = [os.path.split(i)[-1] for i in folders]
         fileStruct = {}
@@ -102,6 +117,7 @@ class ERWorkFlow:
         self.fileStruct = fileStruct
 
     def invalidateCubes(self):
+        """Clear the cached data requiring that data is reloaded from file."""
         self.cubes = None
 
     def deleteFigures(self):
