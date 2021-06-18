@@ -64,7 +64,8 @@ def scanDirectory(directory: str) -> Dict[str, Any]:
         raise Exception(f"Could not load a camera correction at {directory}")
     files = glob(os.path.join(directory, '*', '*', 'Cell*'))
     rows = []
-    matMap = {'air': Material.Air, 'water': Material.Water, 'ipa': Material.Ipa, 'ethanol': Material.Ethanol, 'glass': Material.Glass}
+    matMap = {'air': Material.Air, 'water': Material.Water, 'ipa': Material.Ipa, 'ethanol': Material.Ethanol, 'glass': Material.Glass,
+              'methanol': Material.Methanol}
     for file in files:
         filelist = _splitPath(file)
         s = filelist[2]
