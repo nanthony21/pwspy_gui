@@ -66,8 +66,8 @@ def scanDirectory(directory: str) -> Dict[str, Any]:
               'methanol': Material.Methanol}
     for file in files:
         filelist = pl.Path(file).parts  # Split file into components.
-        s = filelist[2]
-        m = matMap[filelist[1]]
+        s = filelist[-3]
+        m = matMap[filelist[-2]]
         file = AcqDir(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the acqDir class helps us abstract that out and be compatible with both.
         rows.append({'setting': s, 'material': m, 'cube': file})
     df = pd.DataFrame(rows)
