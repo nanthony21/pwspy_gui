@@ -70,7 +70,7 @@ def scanDirectory(directory: str) -> Dict[str, Any]:
         filelist = _splitPath(file)
         s = filelist[2]
         m = matMap[filelist[1]]
-        file = AcqDir(file).pws.filePath # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the acqDir class helps us abstract that out and be compatible with both.
+        file = AcqDir(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the acqDir class helps us abstract that out and be compatible with both.
         rows.append({'setting': s, 'material': m, 'cube': file})
     df = pd.DataFrame(rows)
     return {'dataFrame': df, 'camCorrection': cam}
