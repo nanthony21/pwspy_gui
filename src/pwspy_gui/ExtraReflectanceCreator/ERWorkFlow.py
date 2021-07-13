@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Nick Anthony, Backman Biophotonics Lab, Northwestern University
+# Copyright 2018-2021 Nick Anthony, Backman Biophotonics Lab, Northwestern University
 #
 # This file is part of PWSpy.
 #
@@ -19,9 +19,8 @@ import hashlib
 import os
 from datetime import datetime
 from glob import glob
-from typing import List, Any, Dict
 import json
-
+import typing as t_
 from PyQt5.QtWidgets import QWidget
 from matplotlib import animation
 
@@ -41,7 +40,13 @@ from mpl_qt_viz.visualizers import PlotNd
 import pathlib as pl
 
 
-def scanDirectory(directory: str) -> Dict[str, Any]:
+class Directory:
+    def __init__(self, df: pd.DataFrame, camCorr: CameraCorrection):
+        self.dataframe = df
+        self.cameraCorrection = camCorr
+
+
+def scanDirectory(directory: str) -> Directory:
     """
     Scan a folder for data in the format expected by this application. We expect multiple layers of subfolders.
     Layer 1: Folders named by date.
@@ -52,7 +57,7 @@ def scanDirectory(directory: str) -> Dict[str, Any]:
         directory: The file path to be scanned.
 
     Returns:
-        A dictionary containing a dataframe of values and a camera correction object. TODO this is bad.
+        A `Directory` object for the scanned directory.
     """
     try:
         cam = CameraCorrection.fromJsonFile(os.path.join(directory, 'cameraCorrection.json'))
@@ -71,29 +76,56 @@ def scanDirectory(directory: str) -> Dict[str, Any]:
         file = AcqDir(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the acqDir class helps us abstract that out and be compatible with both.
         rows.append({'setting': s, 'material': m, 'cube': file})
     df = pd.DataFrame(rows)
-    return {'dataFrame': df, 'camCorrection': cam}
+    return Directory(df, cam)
 
 
-def _processIm(im: ImCube, kwargs) -> ImCube:
-    """
-    This processor function may be run in parallel to pre-process each raw image.
+class DataProvider:
+    def __init__(self, df: pd.DataFrame, camCorr: CameraCorrection):
+        self._df = df
+        self._cameraCorrection = camCorr
+        self._cubes = None
 
-    Args:
-        im: The `ImCube` to be preprocessed.
-        kwargs: These keyword arguments are passed to `ImCube.correctCameraEffects`
+    def getCubes(self):
+        return self._cubes
 
-    Returns:
-        The same ImCube that was provided as input.
-    """
-    im.correctCameraEffects(**kwargs)
-    im.normalizeByExposure()
-    try:
-        im.filterDust(0.8)  # in microns
-    except ValueError:
-        logger = logging.getLogger(__name__)
-        logger.warning("No pixel size metadata found. assuming a gaussian filter radius of 6 pixels = 1 sigma.")
-        im.filterDust(6, pixelSize=1)  # Do the filtering in units of pixels if no auto pixelsize was found
-    return im
+    def getDataFrame(self):
+        return self._df
+
+    def loadCubes(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool):
+        df = self._df[self._df['setting'].isin(includeSettings)]
+        if binning is None:
+            args = {'correction': None, 'binning': None}
+            for cube in df['cube']:
+                md = ICMetaData.loadAny(cube)
+                if md.binning is None:
+                    raise Exception("No binning metadata found. Please specify a binning setting.")
+                elif md.cameraCorrection is None:
+                    raise Exception(
+                        "No camera correction metadata found. Please specify a binning setting, in this case the application will use the camera correction stored in the cameraCorrection.json file of the calibration folder")
+        else:
+            args = {'correction': self._cameraCorrection, 'binning': binning}
+        self._cubes = loadAndProcess(df, self._processIm, parallel=parallelProcessing, procArgs=[args])
+
+    def _processIm(self, im: ImCube, kwargs) -> ImCube:
+        """
+        This processor function may be run in parallel to pre-process each raw image.
+
+        Args:
+            im: The `ImCube` to be preprocessed.
+            kwargs: These keyword arguments are passed to `ImCube.correctCameraEffects`
+
+        Returns:
+            The same ImCube that was provided as input.
+        """
+        im.correctCameraEffects(**kwargs)
+        im.normalizeByExposure()
+        try:
+            im.filterDust(0.8)  # in microns
+        except ValueError:
+            logger = logging.getLogger(__name__)
+            logger.warning("No pixel size metadata found. assuming a gaussian filter radius of 6 pixels = 1 sigma.")
+            im.filterDust(6, pixelSize=1)  # Do the filtering in units of pixels if no auto pixelsize was found
+        return im
 
 
 class ERWorkFlow:
@@ -107,19 +139,23 @@ class ERWorkFlow:
         homeDir: TODO
     """
     def __init__(self, workingDir: str, homeDir: str):
-        self.cubes = self.fileStruct = self.df = self.cameraCorrection = self.currDir = self.plotnds = self.anims = None
+        self.fileStruct = self.df = self.cameraCorrection = self.currDir = self.plotnds = self.anims = None
         self.figs = []
+        self.dataprovider = None
         self.homeDir = homeDir
         folders = [i for i in glob(os.path.join(workingDir, '*')) if os.path.isdir(i)]
         settings = [os.path.split(i)[-1] for i in folders]
-        fileStruct = {}
+        self.fileStruct = {}
         for f, s in zip(folders, settings):
-            fileStruct[s] = scanDirectory(f)
-        self.fileStruct = fileStruct
+            self.fileStruct[s] = scanDirectory(f)
+
+    def loadIfNeeded(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool):
+        if self.dataprovider.getCubes() is None:
+            self.loadCubes(includeSettings, binning, parallelProcessing)
 
     def invalidateCubes(self):
         """Clear the cached data requiring that data is reloaded from file."""
-        self.cubes = None
+        self.dataprovider._cubes = None
 
     def deleteFigures(self):
         for fig in self.figs:
@@ -131,22 +167,12 @@ class ERWorkFlow:
                 raise TypeError(f"Type {type(fig)} shouldn't be here, what's going on?")
         self.figs = []
 
-    def loadCubes(self, includeSettings: List[str], binning: int, parallelProcessing: bool):
-        df = self.df[self.df['setting'].isin(includeSettings)]
-        if binning is None:
-            args = {'correction': None, 'binning': None}
-            for cube in df['cube']:
-                md = ICMetaData.loadAny(cube)
-                if md.binning is None:
-                    raise Exception("No binning metadata found. Please specify a binning setting.")
-                elif md.cameraCorrection is None:
-                    raise Exception("No camera correction metadata found. Please specify a binning setting, in this case the application will use the camera correction stored in the cameraCorrection.json file of the calibration folder")
-        else:
-            args = {'correction': self.cameraCorrection, 'binning': binning}
-        self.cubes = loadAndProcess(df, _processIm, parallel=parallelProcessing, procArgs=[args])
+    def loadCubes(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool):
+        self.dataprovider.loadCubes(includeSettings, binning, parallelProcessing)
 
-    def plot(self, numericalAperture: float, saveToPdf: bool = False, saveDir: str = None):
-        cubes = self.cubes
+    def plot(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float, saveToPdf: bool = False, saveDir: str = None):
+        self.loadIfNeeded(includeSettings, binning, parallelProcessing)
+        cubes = self.dataprovider.getCubes()
         materials = set(cubes['material'])
         theoryR = er.getTheoreticalReflectances(materials,
                                                 cubes['cube'].iloc[0].wavelengths, numericalAperture)  # Theoretical reflectances
@@ -163,15 +189,17 @@ class ERWorkFlow:
                     f.set_size_inches(9, 9)
                     pp.savefig(f)
 
-    def save(self, numericalAperture: float):
-        settings = set(self.cubes['setting'])
+    def save(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float):
+        self.loadIfNeeded(includeSettings, binning, parallelProcessing)
+        cubes = self.dataprovider.getCubes()
+        settings = set(cubes['setting'])
         for setting in settings:
-            cubes = self.cubes[self.cubes['setting'] == setting]
-            materials = set(cubes['material'])
+            sCubes = cubes[cubes['setting'] == setting]
+            materials = set(sCubes['material'])
             theoryR = er.getTheoreticalReflectances(materials,
-                                                    cubes['cube'].iloc[0].wavelengths, numericalAperture)  # Theoretical reflectances
+                                                    sCubes['cube'].iloc[0].wavelengths, numericalAperture)  # Theoretical reflectances
             matCombos = er.generateMaterialCombos(materials)
-            combos = er.getAllCubeCombos(matCombos, cubes)
+            combos = er.getAllCubeCombos(matCombos, sCubes)
             erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
             plotnds = [PlotNd(rExtraDict[k][0], title=k,
                             indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
@@ -210,13 +238,15 @@ class ERWorkFlow:
         with open(os.path.join(self.homeDir, 'index.json'), 'w') as f:
             json.dump(index, f, indent=4)
 
-    def compareDates(self):
+    def compareDates(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool):
+        self.loadIfNeeded(includeSettings, binning, parallelProcessing)
         anis = []
         figs = []  # These lists just maintain references to matplotlib figures to keep them responsive.
-        verts = self.cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select a random of the selected cubes and use it to prompt the user for an analysis ROI
-        mask = Roi.fromVerts(verts=verts, dataShape=self.cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
-        for mat in set(self.cubes['material']):
-            c = self.cubes[self.cubes['material'] == mat]
+        cubes = self.dataprovider.getCubes()
+        verts = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select a random of the selected cubes and use it to prompt the user for an analysis ROI
+        mask = Roi.fromVerts(verts=verts, dataShape=cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
+        for mat in set(cubes['material']):
+            c = cubes[cubes['material'] == mat]
             fig, ax = plt.subplots()
             fig.suptitle(mat.name)
             ax.set_xlabel("Wavelength (nm)")
@@ -238,9 +268,15 @@ class ERWorkFlow:
 
         self.figs.extend(figs) #Keep track of opened figures.
 
-    def directoryChanged(self, directory: str):
+    def directoryChanged(self, directory: str) -> t_.Set[str]:
+        """
+        Args:
+            directory:
+
+        Returns:
+            A list of the `settings` found in the new directory.
+        """
         self.currDir = directory
-        _ = self.fileStruct[directory]
-        self.df = _['dataFrame']
-        self.cameraCorrection = _['camCorrection']
-        self.invalidateCubes()
+        directory = self.fileStruct[directory]
+        self.dataprovider = DataProvider(directory.dataframe, directory.cameraCorrection)
+        return set(self.dataprovider.getDataFrame()['setting'])
