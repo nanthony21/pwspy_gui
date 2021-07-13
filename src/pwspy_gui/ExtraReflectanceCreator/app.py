@@ -49,7 +49,8 @@ class ERApp(QApplication):
                     self.window.checkedSettings,
                     self.window.binning,
                     self.window.parallelProcessing,
-                    self.window.numericalAperture.value())))
+                    self.window.numericalAperture.value(),
+                    self.window)))
         self.window.selListWidg.itemChanged.connect(self.workflow.invalidateCubes)
         self.window.binningCombo.currentIndexChanged.connect(self.workflow.invalidateCubes)
         self.window.compareDatesButton.released.connect(

@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import logging
-from mpl_qt_viz.visualizers import PlotNd
+from mpl_qt_viz.visualizers import PlotNd, DockablePlotWindow
 import pathlib as pl
 
 
@@ -189,7 +189,7 @@ class ERWorkFlow:
                     f.set_size_inches(9, 9)
                     pp.savefig(f)
 
-    def save(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float):
+    def save(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float, parentWidget: QWidget):
         self.loadIfNeeded(includeSettings, binning, parallelProcessing)
         cubes = self.dataprovider.getCubes()
         settings = set(cubes['setting'])
@@ -201,15 +201,20 @@ class ERWorkFlow:
             matCombos = er.generateMaterialCombos(materials)
             combos = er.getAllCubeCombos(matCombos, sCubes)
             erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
-            plotnds = [PlotNd(rExtraDict[k][0], title=k,
-                            indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
-                                     erCube.wavelengths]) for k in rExtraDict.keys()]
+            dock = DockablePlotWindow(title=setting)
+            for k in rExtraDict.keys():
+                dock.addWidget(
+                    PlotNd(rExtraDict[k][0], title=k,
+                           indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
+                                    erCube.wavelengths]),
+                    title=str(k)
+                )
             logger = logging.getLogger(__name__)
             logger.info(f"Final data max is {erCube.data.max()}")
             logger.info(f"Final data min is {erCube.data.min()}")
-            self.figs.extend(plotnds) # keep track of opened figures.
+            self.figs.append(dock)  # keep track of opened figures.
             saveName = f'{self.currDir}-{setting}'
-            dialog = IndexInfoForm(f'{self.currDir}-{setting}', erCube.metadata.idTag)
+            dialog = IndexInfoForm(f'{self.currDir}-{setting}', erCube.metadata.idTag, parent=parentWidget)
 
             def accepted(dialog, erCube, saveName):
                 erCube.metadata.inheritedMetadata['description'] = dialog.description
