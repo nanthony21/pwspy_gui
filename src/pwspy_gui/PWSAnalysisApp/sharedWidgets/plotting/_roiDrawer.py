@@ -147,7 +147,7 @@ class RoiDrawer(QWidget):
         try:
             roiFile = self.roiManager.createRoi(acq, roi, name, num, overwrite=False)
             self.roiCreated.emit(acq, roiFile, False)
-        except OSError:
+        except OSError as ose:
             ans = QMessageBox.question(self.anViewer, 'Overwrite?',
                                        f"Roi {name}:{num} already exists. Overwrite?")
             if ans == QMessageBox.Yes:
