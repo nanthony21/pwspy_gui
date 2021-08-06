@@ -105,6 +105,7 @@ class DataProvider:
         else:
             args = {'correction': self._cameraCorrection, 'binning': binning}
         self._cubes = loadAndProcess(df, self._processIm, parallel=parallelProcessing, procArgs=[args])
+        self._cubes['material'] = self._cubes['material'].astype('category')
 
     def _processIm(self, im: ImCube, kwargs) -> ImCube:
         """
@@ -181,7 +182,7 @@ class ERWorkFlow:
         print("Select an ROI")
         verts = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select an ROI to analyze
         mask = Roi.fromVerts(verts, cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
-        self.figs.extend(er.plotExtraReflection(cubes, theoryR, matCombos, numericalAperture, mask, plotReflectionImages=True))  # TODO rather than opening a million new figures open a single window that lets you flip through them.
+        self.figs.extend(er.plotExtraReflection(cubes, theoryR, matCombos, numericalAperture, mask))
         if saveToPdf:
             with PdfPages(os.path.join(saveDir, f"fig_{datetime.strftime(datetime.now(), '%d-%m-%Y %HH%MM%SS')}.pdf")) as pp:
                 for i in plt.get_fignums():
@@ -199,15 +200,22 @@ class ERWorkFlow:
             theoryR = er.getTheoreticalReflectances(materials,
                                                     sCubes['cube'].iloc[0].wavelengths, numericalAperture)  # Theoretical reflectances
             matCombos = er.generateMaterialCombos(materials)
-            combos = er.getAllCubeCombos(matCombos, sCubes)
+            matCubes = sCubes.groupby('material')['cube'].apply(list).to_dict()
+            combos = er.getAllCubeCombos(matCombos, matCubes)
             erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
             dock = DockablePlotWindow(title=setting)
-            for k in rExtraDict.keys():
+            dock.addWidget(
+                PlotNd(erCube.data, title='Mean',
+                       indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
+                                erCube.wavelengths]),
+                title='Mean'
+            )
+            for matCombo, rExtraArr in rExtraDict.items():
                 dock.addWidget(
-                    PlotNd(rExtraDict[k][0], title=k,
+                    PlotNd(rExtraArr, title=matCombo,
                            indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
                                     erCube.wavelengths]),
-                    title=str(k)
+                    title=str(matCombo)
                 )
             logger = logging.getLogger(__name__)
             logger.info(f"Final data max is {erCube.data.max()}")
