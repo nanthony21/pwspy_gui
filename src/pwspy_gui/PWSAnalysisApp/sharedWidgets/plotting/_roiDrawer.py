@@ -24,6 +24,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtWidgets import QWidget, QGridLayout, QButtonGroup, QPushButton, QDialog, QSpinBox, QLabel, \
     QMessageBox, QMenu, QAction, QApplication
+from pwspy_gui.PWSAnalysisApp._roiManager import _DefaultROIManager
 from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
 
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
@@ -53,7 +54,8 @@ class RoiDrawer(QWidget):
     roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
     metadataChanged = pyqtSignal(pwsdt.AcqDir)  # The acquisition we are looking at has been switched.
 
-    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]], roiManager: ROIManager, parent=None, flags=QtCore.Qt.Window,
+    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]],
+                 roiManager: ROIManager = None, parent=None, flags=QtCore.Qt.Window,
                  title: str = "Roi Drawer 3000", initialField=AnalysisViewer.PlotFields.Thumbnail):
         QWidget.__init__(self, parent=parent, flags=flags)
         self.setWindowTitle(title)
@@ -62,11 +64,11 @@ class RoiDrawer(QWidget):
         layout = QGridLayout()
 
         self._mdIndex = 0
-        self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField, roiManager=roiManager)
+        self.roiManager = roiManager if roiManager else _DefaultROIManager(self)
+        self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField, roiManager=self.roiManager)
         self.anViewer.roiPlot.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
         self.anViewer.roiPlot.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
         self.anViewer.roiPlot.roiCreated.connect(lambda acq, roi: self.roiCreated.emit(acq, roi))
-        self.roiManager = roiManager
 
         self.newRoiDlg = NewRoiDlg(self)
 
