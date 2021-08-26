@@ -74,6 +74,7 @@ class LittlePlot(AnalysisPlotter, QWidget):
 
     def showContextMenu(self, point: QPoint):
         menu = QMenu("ContextMenu", self)
+        menu.setToolTipsVisible(True)
         if self.analysis.pws is not None:
             anPlotAction = QAction("Plot PWS Analyzed Reflectance", self)
             anPlotAction.triggered.connect(self.plotAn3d)
@@ -82,6 +83,10 @@ class LittlePlot(AnalysisPlotter, QWidget):
                 opdAction = QAction("Plot OPD", self)
                 opdAction.triggered.connect(self.plotOpd3d)
                 menu.addAction(opdAction)
+                rmsDepthAction = QAction("Plot RMS-by-OPD", self)
+                rmsDepthAction.triggered.connect(self.plotRMSOpd3d)
+                rmsDepthAction.setToolTip(self.plotRMSOpd3d.__doc__)
+                menu.addAction(rmsDepthAction)
         if self.acq.pws is not None:
             rawPlotAction = QAction("Plot PWS Raw Data", self)
             rawPlotAction.triggered.connect(self.plotRaw3d)
@@ -111,6 +116,20 @@ class LittlePlot(AnalysisPlotter, QWidget):
         opd, opdIndex = self.analysis.pws.opd
         self.plotnd = PlotNd(opd, names=('y', 'x', 'um'), title=os.path.split(self.acq.filePath)[-1],
                              indices=[range(opd.shape[0]), range(opd.shape[1]), opdIndex], parent=self)
+
+    def plotRMSOpd3d(self):
+        """
+        Square root of cumulative sum of OPD^2. Important note: The units are in terms of OPD not depth. Since the light makes a round trip -> depth = OPD / (2 * RI of cell)
+        """
+        opd: np.ndarray
+        opd, opdIndx = self.analysis.pws.opd
+
+        opdSquaredSum = np.cumsum(opd**2, axis=2)  # Parseval's theorem tells us that this is equivalent to the sum of the squares of our original signal. Cumulative sum from 0 up to a given OPD
+        opdSquaredSum *= len(self.analysis.pws.reflectance.wavenumbers) / opd.shape[2]  # If the original data and opd were of the same length then the above line would be correct. Since the fft may have been upsampled. we need to normalize.
+        rmsByOPD = np.sqrt(opdSquaredSum)
+
+        self.plotnd = PlotNd(rmsByOPD, names=('y', 'x', 'um'), title=os.path.split(self.acq.filePath)[-1],
+                             indices=[range(opd.shape[0]), range(opd.shape[1]), opdIndx], parent=self)
 
     def plotDynAn3d(self):
         refl = self.analysis.dyn.reflectance
