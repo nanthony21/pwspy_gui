@@ -135,7 +135,7 @@ class ERIndexCube:
         return {'fileName': self.fileName, 'description': self.description, 'idTag': self.idTag, 'name': self.name, 'md5': self.md5}
 
     def __repr__(self) -> str:
-        return str(self.toDict())
+        return f"ERIndexCube({self.toDict()})"
 
     def __eq__(self, other: ERIndex):
         assert isinstance(other, ERIndexCube)
