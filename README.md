@@ -1,5 +1,5 @@
 # PWSpy_gui
-A collection of GUIs providing users with easy access to the pwspy library.
+A collection of GUIs providing users with easy access to the pwspy library. The main application provided by this package is the PWS Analysis application. You can find a tutorial on using PWS Analysis [here](https://nanthony21.github.io/AnalysisIntroduction/demo.html)
 
 ## Documentation
 This project is automatically documented by "Sphinx". If you have Sphinx installed then you can compile documentation to HTML 
@@ -17,7 +17,7 @@ Create a new environment with the command: `conda create -n {environmentName} py
 More information [here](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
 
 #### Installing from Anaconda Cloud (recommended)
-`PWSpy_gui` is stored online on the "backmanlab" Anaconda Cloud channel. It can be installed from Conda with the command `conda install -c conda-forge -c backmanlab pwspy`
+`PWSpy_gui` is stored online on the "backmanlab" Anaconda Cloud channel. It can be installed from Conda with the command `conda install -c conda-forge -c backmanlab pwspy_gui`
 
 #### Installing Manually
 If you have the built package (.tar.gz file) then you can install the package by pointing `conda install` to it.
@@ -33,7 +33,7 @@ the `Anaconda` category
 2. Type `PWSAnalysis` into the command prompt for the Conda environment
 that `pwspy_gui` is installed in.  
 
-3. In `Anaconda-Navigator` an app named `pwspy` should appear. 
+3. In `Anaconda-Navigator` an app named `pwspy_gui` should appear. On Windows a program called `PWSAnalysis` should appear in the start menu. 
 
 The first time you run the GUI on a computer you will
 need to sign into the Google Drive database where calibration data is stored.
@@ -55,7 +55,7 @@ In addition you will need:
 Use the python in your `base` anaconda environment to run `python installScripts\build.py`.
 The output will default to `buildscripts/conda/build`. You can optionally provide a custom
 output path as the first argument to the `build.py` script. There will be many
-files here but the most important one is `build/noarch/pwspy_xxxxxxxxxx.tar.gz`.
+files here but the most important one is `build/noarch/pwspy_gui_xxxxxxxxxx.tar.gz`.
 This will update the module version in the `_version` file and run the conda-build and deploy steps.
 The version number can be understood as `a.b.c.d-xyz` where `a.b.c` are numbers set manually with a Git `Tag`, `d` is the number of commits since 
 `a.b.c` was tagged, `xyz` is the short sha hash for the git commit.
