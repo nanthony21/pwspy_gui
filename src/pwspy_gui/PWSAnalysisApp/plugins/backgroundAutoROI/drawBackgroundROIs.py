@@ -39,7 +39,7 @@ class BGRoiDrawer:
         self._roiManager = roiManager
         self._processingThread = QThread(self._parent)
 
-    def run(self, acqs: t_.Sequence[pwsdt.AcqDir]):
+    def run(self, acqs: t_.Sequence[pwsdt.Acquisition]):
         analysisname = self._showDialog()
         if analysisname is None:
             return
@@ -63,11 +63,11 @@ class BGRoiDrawer:
         else:
             return None
 
-    def drawBackgroundROIs(self, acqs: t_.Iterable[pwsdt.AcqDir], analysisNamePattern: str):
+    def drawBackgroundROIs(self, acqs: t_.Iterable[pwsdt.Acquisition], analysisNamePattern: str):
         """
 
         Args:
-            acqs: A list of AcqDir object to run.
+            acqs: A list of Acquisition object to run.
             analysisNamePattern: A regex pattern of the analysis file to use for detecting background
         """
         logger = logging.getLogger(__name__)

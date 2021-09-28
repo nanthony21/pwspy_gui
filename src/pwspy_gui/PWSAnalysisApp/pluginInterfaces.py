@@ -6,16 +6,14 @@ from typing import List
 from PyQt5.QtWidgets import QWidget, QMessageBox
 
 from pwspy import dataTypes as pwsdt
-from pwspy_gui.PWSAnalysisApp.componentInterfaces import QABCMeta
+from pwspy_gui.PWSAnalysisApp import componentInterfaces
 import pwspy_gui.PWSAnalysisApp.plugins
-from pwspy.dataTypes import AcqDir
-if typing.TYPE_CHECKING:
-    from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
+
 
 
 class CellSelectorPluginSupport:
     """A utility class to help manage CellSelectorPlugins"""
-    def __init__(self, selector: CellSelector, pWidget: QWidget):
+    def __init__(self, selector: componentInterfaces.CellSelector, pWidget: QWidget):
         pluginClasses = self._findPlugins()
         self._plugins: List[CellSelectorPlugin] = [clazz() for clazz in pluginClasses]
         for p in self._plugins:
@@ -46,7 +44,7 @@ class CellSelectorPluginSupport:
     def getPlugins(self) -> typing.Sequence[CellSelectorPlugin]:
         return self._plugins
 
-    def notifyCellSelectionChanged(self, cells: typing.Sequence[pwsdt.AcqDir]):
+    def notifyCellSelectionChanged(self, cells: typing.Sequence[pwsdt.Acquisition]):
         for plugin in self._plugins:
             try:
                 plugin.onCellsSelected(cells)
@@ -54,7 +52,7 @@ class CellSelectorPluginSupport:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self._selector, "Plugin error", f"Error in `onCellsSelected` of plugin: {plugin.getName()}. See log.")
 
-    def notifyReferenceSelectionChanged(self, cell: pwsdt.AcqDir):
+    def notifyReferenceSelectionChanged(self, cell: pwsdt.Acquisition):
         for plugin in self._plugins:
             try:
                 plugin.onReferenceSelected(cell)
@@ -62,7 +60,7 @@ class CellSelectorPluginSupport:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self._selector, "Plugin error", f"Error in `onReferenceSelected` of plugin: {plugin.getName()}. See log.")
 
-    def notifyNewCellsLoaded(self, cells: List[pwsdt.AcqDir]):
+    def notifyNewCellsLoaded(self, cells: List[pwsdt.Acquisition]):
         for plugin in self._plugins:
             try:
                 plugin.onNewCellsLoaded(cells)
@@ -78,26 +76,26 @@ class CellSelectorPluginSupport:
             QMessageBox.information(self._selector, "Plugin error", f"Error in `onPluginSelected` of plugin: {plugin.getName()}. See log.")
 
 
-class CellSelectorPlugin(metaclass=QABCMeta):
+class CellSelectorPlugin(metaclass=componentInterfaces.QABCMeta):
     """Base class for  a plugin that can extend the functionality of the `Cell Selector`.
     Implementions of this class should require no args for the constructor"""
     @abc.abstractmethod
-    def setContext(self, selector: CellSelector, parentWidget: QWidget):
+    def setContext(self, selector: componentInterfaces.CellSelector, parentWidget: QWidget):
         """Set the CellSelector that this plugin is associated to. This should happen before anything else."""
         pass
 
     @abc.abstractmethod
-    def onCellsSelected(self, cells: typing.Sequence[pwsdt.AcqDir]):
+    def onCellsSelected(self, cells: typing.Sequence[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 
     @abc.abstractmethod
-    def onReferenceSelected(self, cell: pwsdt.AcqDir):
+    def onReferenceSelected(self, cell: pwsdt.Acquisition):
         """This method will be called when the CellSelector indicates that it has had a new reference selected."""
         pass
 
     @abc.abstractmethod
-    def onNewCellsLoaded(self, cells: List[pwsdt.AcqDir]):
+    def onNewCellsLoaded(self, cells: List[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that new cells have been loaded to the selector."""
         pass
 
@@ -117,7 +115,7 @@ class CellSelectorPlugin(metaclass=QABCMeta):
         pass
 
     @abc.abstractmethod
-    def getTableWidgets(self, acq: pwsdt.AcqDir) -> typing.Sequence[QWidget]:
+    def getTableWidgets(self, acq: pwsdt.Acquisition) -> typing.Sequence[QWidget]:
         """provide a widget for each additional column to represent `acq`"""
         pass
 

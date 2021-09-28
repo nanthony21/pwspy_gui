@@ -44,28 +44,28 @@ class CellSelector(metaclass=QABCMeta):
     def loadNewCells(self, fileNames: List[str], workingDir: str): pass
 
     @abc.abstractmethod
-    def getSelectedCellMetas(self) -> List[pwsdt.AcqDir]: pass
+    def getSelectedCellMetas(self) -> List[pwsdt.Acquisition]: pass
 
     @abc.abstractmethod
-    def getAllCellMetas(self) -> List[pwsdt.AcqDir]: pass
+    def getAllCellMetas(self) -> List[pwsdt.Acquisition]: pass
 
     @abc.abstractmethod
-    def getSelectedReferenceMeta(self) -> Optional[pwsdt.AcqDir]: pass
+    def getSelectedReferenceMeta(self) -> Optional[pwsdt.Acquisition]: pass
 
     @abc.abstractmethod
-    def setSelectedCells(self, cells: List[pwsdt.AcqDir]): pass
+    def setSelectedCells(self, cells: List[pwsdt.Acquisition]): pass
 
     @abc.abstractmethod
-    def setSelectedReference(self, ref: pwsdt.AcqDir): pass
+    def setSelectedReference(self, ref: pwsdt.Acquisition): pass
 
     @abc.abstractmethod
-    def setHighlightedCells(self, cells: List[pwsdt.AcqDir]): pass
+    def setHighlightedCells(self, cells: List[pwsdt.Acquisition]): pass
 
     @abc.abstractmethod
-    def setHighlightedReference(self, ref: pwsdt.AcqDir): pass
+    def setHighlightedReference(self, ref: pwsdt.Acquisition): pass
 
     @abc.abstractmethod
-    def refreshCellItems(self, cells: List[pwsdt.AcqDir] = None):
+    def refreshCellItems(self, cells: List[pwsdt.Acquisition] = None):
         """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
         pass
 
@@ -80,7 +80,7 @@ class CellSelector(metaclass=QABCMeta):
 
 class ResultsTableController(metaclass=QABCMeta):
     @abc.abstractmethod
-    def addCompilationResult(self, result: ConglomerateCompilerResults, acquisition: pwsdt.AcqDir): pass
+    def addCompilationResult(self, result: ConglomerateCompilerResults, acquisition: pwsdt.Acquisition): pass
 
     @abc.abstractmethod
     def clearCompilationResults(self): pass
@@ -117,11 +117,11 @@ class ROIManager(metaclass=QABCMeta):
         pass
 
     @abc.abstractmethod
-    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int, overwrite: bool = False) -> pwsdt.RoiFile:
+    def createRoi(self, acq: pwsdt.Acquisition, roi: pwsdt.Roi, roiName: str, roiNumber: int, overwrite: bool = False) -> pwsdt.RoiFile:
         pass
 
     @abc.abstractmethod
-    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
+    def getROI(self, acq: pwsdt.Acquisition, roiName: str, roiNum: int) -> pwsdt.RoiFile:
         pass
 
     @abc.abstractmethod

@@ -24,7 +24,7 @@ import typing as t_
 from PyQt5.QtWidgets import QWidget
 from matplotlib import animation
 
-from pwspy.dataTypes import CameraCorrection, AcqDir, ICMetaData, ImCube
+from pwspy.dataTypes import CameraCorrection, Acquisition, ICMetaData, PwsCube
 from pwspy_gui.ExtraReflectanceCreator.widgets.dialog import IndexInfoForm
 from pwspy.dataTypes import Roi
 from pwspy import dateTimeFormat
@@ -73,7 +73,7 @@ def scanDirectory(directory: str) -> Directory:
         filelist = pl.Path(file).parts  # Split file into components.
         s = filelist[-3]
         m = matMap[filelist[-2]]
-        file = AcqDir(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the acqDir class helps us abstract that out and be compatible with both.
+        file = Acquisition(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the Acquisition class helps us abstract that out and be compatible with both.
         rows.append({'setting': s, 'material': m, 'cube': file})
     df = pd.DataFrame(rows)
     return Directory(df, cam)
@@ -107,16 +107,16 @@ class DataProvider:
         self._cubes = loadAndProcess(df, self._processIm, parallel=parallelProcessing, procArgs=[args])
         self._cubes['material'] = self._cubes['material'].astype('category')
 
-    def _processIm(self, im: ImCube, kwargs) -> ImCube:
+    def _processIm(self, im: PwsCube, kwargs) -> PwsCube:
         """
         This processor function may be run in parallel to pre-process each raw image.
 
         Args:
-            im: The `ImCube` to be preprocessed.
-            kwargs: These keyword arguments are passed to `ImCube.correctCameraEffects`
+            im: The `PwsCube` to be preprocessed.
+            kwargs: These keyword arguments are passed to `PwsCube.correctCameraEffects`
 
         Returns:
-            The same ImCube that was provided as input.
+            The same PwsCube that was provided as input.
         """
         im.correctCameraEffects(**kwargs)
         im.normalizeByExposure()

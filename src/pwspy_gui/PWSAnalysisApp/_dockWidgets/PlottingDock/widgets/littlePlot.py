@@ -23,14 +23,14 @@ from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QMenu, QAction, QWidget, QLabel, QVBoxLayout, QApplication
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
-from pwspy.dataTypes import AcqDir, ImCube
+from pwspy.dataTypes import Acquisition, PwsCube
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._widgets import AnalysisPlotter
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._analysisViewer import AnalysisViewer
 from mpl_qt_viz.visualizers import PlotNd
 
 
 class LittlePlot(AnalysisPlotter, QWidget):
-    def __init__(self, acquisition: AcqDir, analysis: ConglomerateAnalysisResults, title: str, text: str = None,
+    def __init__(self, acquisition: Acquisition, analysis: ConglomerateAnalysisResults, title: str, text: str = None,
                  initialField=AnalysisPlotter.PlotFields.Thumbnail):
         assert analysis is not None #The member of the conglomerateAnalysisResults can be None but the way this class is written requires that the object itself exists.
         AnalysisPlotter.__init__(self, acquisition, analysis)
@@ -108,7 +108,7 @@ class LittlePlot(AnalysisPlotter, QWidget):
                              indices=[range(refl.data.shape[0]), range(refl.data.shape[1]), refl.wavenumbers], parent=self)
 
     def plotRaw3d(self):
-        im = ImCube.fromMetadata(self.acq.pws)
+        im = PwsCube.fromMetadata(self.acq.pws)
         self.plotnd = PlotNd(im.data, title=os.path.split(self.acq.filePath)[-1], names=('y', 'x', 'lambda'),
                              indices=[range(im.data.shape[0]), range(im.data.shape[1]), im.wavelengths], parent=self)
 

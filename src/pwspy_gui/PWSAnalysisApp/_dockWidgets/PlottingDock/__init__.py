@@ -155,7 +155,7 @@ class PlottingDock(QDockWidget):
         else:
             raise ValueError("`enable` string not recognized.")
 
-    def _generatePlots(self, cells: List[pwsdt.AcqDir]):
+    def _generatePlots(self, cells: List[pwsdt.Acquisition]):
         try:
             self.cellMetas = cells
             analysisName = self._anNameEdit.text()

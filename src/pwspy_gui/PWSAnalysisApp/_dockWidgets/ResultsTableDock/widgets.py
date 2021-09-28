@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from pwspy.analysis.compilation import (DynamicsCompilerSettings, GenericCompilerSettings, PWSCompilerSettings, AbstractCompilerSettings)
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateCompilerResults
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.tables import CopyableTable, NumberTableWidgetItem
-from pwspy.dataTypes import AcqDir
+from pwspy.dataTypes import Acquisition
 import os
 
 
@@ -37,7 +37,7 @@ class ResultsTableItem:
         acq: A reference to the directory storing the data files.
 
     """
-    def __init__(self, results: ConglomerateCompilerResults, acq: AcqDir):
+    def __init__(self, results: ConglomerateCompilerResults, acq: Acquisition):
         self.results = results
         self.acq = acq
         cellPath = os.path.split(acq.filePath)[0][len(QApplication.instance().workingDirectory) + 1:]

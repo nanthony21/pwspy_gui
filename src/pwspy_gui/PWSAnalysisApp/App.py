@@ -125,13 +125,13 @@ class PWSApp(QApplication):
         rc = RoiConverter(metas)
         self.window.cellSelector.refreshCellItems()
 
-    def setSelectedCells(self, acqs: typing.Sequence[pwsdt.AcqDir]):
+    def setSelectedCells(self, acqs: typing.Sequence[pwsdt.Acquisition]):
         self.window.cellSelector.setSelectedCells(acqs)
 
-    def getSelectedCells(self) -> typing.Sequence[pwsdt.AcqDir]:
+    def getSelectedCells(self) -> typing.Sequence[pwsdt.Acquisition]:
         return self.window.cellSelector.getSelectedCellMetas()
 
-    def getLoadedCells(self) -> typing.Sequence[pwsdt.AcqDir]:
+    def getLoadedCells(self) -> typing.Sequence[pwsdt.Acquisition]:
         return self.window.cellSelector.getAllCellMetas()
 
     def plotSelectedCells(self, analysisName: str = None):

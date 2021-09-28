@@ -26,14 +26,14 @@ class _DefaultROIManager(ROIManager, QObject):
         self._cache[self._getCacheKey(roiFile)] = roiFile
         self.roiUpdated.emit(roiFile)
 
-    def createRoi(self, acq: pwsdt.AcqDir, roi: pwsdt.Roi, roiName: str, roiNumber: int, overwrite: bool = False) -> pwsdt.RoiFile:
+    def createRoi(self, acq: pwsdt.Acquisition, roi: pwsdt.Roi, roiName: str, roiNumber: int, overwrite: bool = False) -> pwsdt.RoiFile:
         roiFile = acq.saveRoi(roiName, roiNumber, roi, overwrite=overwrite)
         self._cache[self._getCacheKey(roiFile)] = roiFile
         self.roiCreated.emit(roiFile, overwrite)
         return roiFile
 
     @cachedmethod(lambda self: self._cache, key=lambda acq, roiName, roiNum: (acq.filePath, roiName, roiNum))  # Cache results
-    def getROI(self, acq: pwsdt.AcqDir, roiName: str, roiNum: int) -> pwsdt.RoiFile:
+    def getROI(self, acq: pwsdt.Acquisition, roiName: str, roiNum: int) -> pwsdt.RoiFile:
         return acq.loadRoi(roiName, roiNum)
 
     def close(self):

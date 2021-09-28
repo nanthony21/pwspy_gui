@@ -9,10 +9,10 @@ from pwspy_gui.PWSAnalysisApp.pluginInterfaces import CellSelectorPlugin
 import os
 
 from ._ui.widget import SequenceViewer
-from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
+from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SequenceAcquisition
 from pwspy.utility.acquisition.steps import SequencerStep
 from pwspy.utility.acquisition import RuntimeSequenceSettings
-from pwspy.dataTypes import AcqDir
+from pwspy.dataTypes import Acquisition
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.componentInterfaces import CellSelector
 
@@ -29,7 +29,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
     def __init__(self):
         self._selector: CellSelector = None
         self._sequence: SequencerStep = None
-        self._cells: typing.List[SeqAcqDir] = None
+        self._cells: typing.List[SequenceAcquisition] = None
         self._ui = SequenceViewer()
         self._ui.newCoordSelected.connect(self._updateSelectorSelection)
 
@@ -40,17 +40,17 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         self._ui.setWindowFlags(QtCore.Qt.Window)  # Without this is just gets added to the main window in a weird way.
 
     @requirePluginActive
-    def onCellsSelected(self, cells: typing.List[pwsdt.AcqDir]):
+    def onCellsSelected(self, cells: typing.List[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 
     @requirePluginActive
-    def onReferenceSelected(self, cell: pwsdt.AcqDir):
+    def onReferenceSelected(self, cell: pwsdt.Acquisition):
         """This method will be called when the CellSelector indicates that it has had a new reference selected."""
         pass
 
     @requirePluginActive
-    def onNewCellsLoaded(self, cells: typing.List[pwsdt.AcqDir]):
+    def onNewCellsLoaded(self, cells: typing.List[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that new cells have been loaded to the selector."""
         sequence, acqs = self._loadNewSequence(cells)
         self._sequence = sequence
@@ -72,12 +72,12 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         """The header names for each column."""
         return tuple() #return "Coord. Type", "Coord. Value" # We used to add new columns, but it was confusing, better not to.
 
-    def getTableWidgets(self, acq: pwsdt.AcqDir) -> typing.Sequence[QWidget]:  #TODO this gets called before the sequence has been loaded. Make it so this isn't required for constructor of cell table widgets.
+    def getTableWidgets(self, acq: pwsdt.Acquisition) -> typing.Sequence[QWidget]:  #TODO this gets called before the sequence has been loaded. Make it so this isn't required for constructor of cell table widgets.
         """provide a widget for each additional column to represent `acq`"""
         return tuple()
         # typeNames = {SequencerStepTypes.POS.name: "Position", SequencerStepTypes.TIME.name: "Time", SequencerStepTypes.ZSTACK.name: "Z Stack"}
         # try:
-        #     acq = SeqAcqDir(acq)
+        #     acq = SequenceAcquisition(acq)
         # except:
         #     return tuple((QTableWidgetItem(), QTableWidgetItem()))
         # coord = acq.sequencerCoordinate
@@ -92,13 +92,13 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
         #
 
     def _updateSelectorSelection(self, coordRange: SequencerCoordinateRange):
-        select: typing.List[AcqDir] = []
+        select: typing.List[Acquisition] = []
         for cell in self._cells:
             if cell.sequencerCoordinate in coordRange:
                 select.append(cell.acquisition)
         self._selector.setSelectedCells(select)
 
-    def _loadNewSequence(self, cells: typing.Sequence[pwsdt.AcqDir]) -> typing.Tuple[SequencerStep, typing.Sequence[SeqAcqDir]]:
+    def _loadNewSequence(self, cells: typing.Sequence[pwsdt.Acquisition]) -> typing.Tuple[SequencerStep, typing.Sequence[SequenceAcquisition]]:
         if len(cells) == 0:  # This causes a crash
             return None, None
         cellFilePaths = [acq.filePath for acq in cells]
@@ -122,7 +122,7 @@ class AcquisitionSequencerPlugin(CellSelectorPlugin):
             foundAcqs = []
             for f in cells:
                 try:
-                    foundAcqs.append(SeqAcqDir(f))
+                    foundAcqs.append(SequenceAcquisition(f))
                 except FileNotFoundError:
                     pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
             foundAcqs = [acq for acq in foundAcqs if acq.sequencerCoordinate.uuid == sequenceRoot.uuid]  # Filter out acquisitions that don't have a matching UUID to the sequence file.
@@ -141,8 +141,8 @@ if __name__ == '__main__':
     from pwspy import dataTypes as pwsdt
     from glob import glob
 
-    acqs = [pwsdt.AcqDir(i) for i in glob(r"C:\Users\nicke\Desktop\data\toast2\Cell*")]
-    sacqs = [SeqAcqDir(acq) for acq in acqs]
+    acqs = [pwsdt.Acquisition(i) for i in glob(r"C:\Users\nicke\Desktop\data\toast2\Cell*")]
+    sacqs = [SequenceAcquisition(acq) for acq in acqs]
 
     import sys
 
