@@ -18,7 +18,7 @@ from __future__ import annotations
 import numpy as np
 import typing as t_
 from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateAnalysisResults
-from pwspy.dataTypes import AcqDir, FluorescenceImage
+from pwspy.dataTypes import Acquisition, FluorescenceImage
 from enum import Enum
 from pwspy.analysis.pws import PWSAnalysisResults
 from pwspy.analysis.dynamics import DynamicsAnalysisResults
@@ -76,10 +76,10 @@ class AnalysisPlotter:
             t_.Optional[DynamicsAnalysisResults]
         ]]
 
-    def __init__(self, acq: AcqDir, analysis: AnalysisResultsComboType = None, initialField=PlotFields.Thumbnail):
+    def __init__(self, acq: Acquisition, analysis: AnalysisResultsComboType = None, initialField=PlotFields.Thumbnail):
         self._analysisField: AnalysisPlotter.PlotFields = initialField
         self._analysis: ConglomerateAnalysisResults = ConglomerateAnalysisResults(*analysis)
-        self._acq: AcqDir = acq
+        self._acq: Acquisition = acq
         self._data: np.ndarray = None
 
     @property
@@ -87,7 +87,7 @@ class AnalysisPlotter:
         return self._analysis
 
     @property
-    def acq(self) -> AcqDir:
+    def acq(self) -> Acquisition:
         return self._acq
 
     @property
@@ -126,7 +126,7 @@ class AnalysisPlotter:
                 self._data = getattr(analysis, paramName)
         assert len(self._data.shape) == 2
 
-    def setMetadata(self, md: AcqDir, analysis: t_.Optional[AnalysisResultsComboType] = None):
+    def setMetadata(self, md: Acquisition, analysis: t_.Optional[AnalysisResultsComboType] = None):
         self._analysis = ConglomerateAnalysisResults(*analysis) if not isinstance(analysis, ConglomerateAnalysisResults) else analysis # In case this was a regular tuple, convert to our convenience class
         self._acq = md
         self.changeData(self._analysisField)

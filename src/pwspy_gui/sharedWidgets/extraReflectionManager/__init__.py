@@ -23,18 +23,15 @@ import typing
 from io import IOBase
 from typing import Optional, Dict, List
 import pickle
-
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, QThread
 from PyQt5.QtWidgets import QMessageBox, QWidget
-
 import httplib2
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 from google.auth.exceptions import TransportError
-
 from pwspy.dataTypes import ERMetaData
 from pwspy_gui.PWSAnalysisApp import applicationVars
 from pwspy_gui.sharedWidgets.dialogs import BusyDialog

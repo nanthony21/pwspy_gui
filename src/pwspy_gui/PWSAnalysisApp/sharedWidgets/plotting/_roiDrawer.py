@@ -47,14 +47,14 @@ class RoiDrawer(QWidget):
     A widget for interactively drawing ROIs. Defaults to showing as it's own window, this can be overridden with the `flags` argument.
 
     Args:
-        metadatas: A list of pwspy AcquisitionDirectory `AcqDir` objects paired with optional analysis results objects for that acquisition.
+        metadatas: A list of pwspy AcquisitionDirectory `Acquisition` objects paired with optional analysis results objects for that acquisition.
     """
-    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile, bool)  # Fired when a roi is created by this widget.
-    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
-    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)
-    metadataChanged = pyqtSignal(pwsdt.AcqDir)  # The acquisition we are looking at has been switched.
+    roiCreated = pyqtSignal(pwsdt.Acquisition, pwsdt.RoiFile, bool)  # Fired when a roi is created by this widget.
+    roiDeleted = pyqtSignal(pwsdt.Acquisition, pwsdt.RoiFile)
+    roiModified = pyqtSignal(pwsdt.Acquisition, pwsdt.RoiFile)
+    metadataChanged = pyqtSignal(pwsdt.Acquisition)  # The acquisition we are looking at has been switched.
 
-    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.AcqDir, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]],
+    def __init__(self, metadatas: t_.List[t_.Tuple[pwsdt.Acquisition, t_.Optional[AnalysisViewer.AnalysisResultsComboType]]],
                  roiManager: ROIManager = None, parent=None, flags=QtCore.Qt.Window,
                  title: str = "Roi Drawer 3000", initialField=AnalysisViewer.PlotFields.Thumbnail):
         QWidget.__init__(self, parent=parent, flags=flags)
@@ -144,7 +144,7 @@ class RoiDrawer(QWidget):
             self._saveNewRoi(roiName, self.newRoiDlg.number, np.array(verts), shape, md)
         self.selector.setActive(True)  # Start the next roiFile.
 
-    def _saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.AcqDir):
+    def _saveNewRoi(self, name: str, num: int, verts, datashape, acq: pwsdt.Acquisition):
         roi = pwsdt.Roi.fromVerts(verts, datashape)
         try:
             roiFile = self.roiManager.createRoi(acq, roi, name, num, overwrite=False)
@@ -204,7 +204,7 @@ class RoiDrawer(QWidget):
         self.metadataChanged.emit(md)
         self._mdIndex = idx
 
-    def setDisplayedAcquisition(self, acq: pwsdt.AcqDir):
+    def setDisplayedAcquisition(self, acq: pwsdt.Acquisition):
         """Switch the image to display images associated with `acq`. If `acq` wasn't passed in to the constructor of this object then
         an IndexError will be raised.
 

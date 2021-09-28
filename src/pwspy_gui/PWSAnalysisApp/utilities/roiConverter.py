@@ -20,7 +20,7 @@ import logging
 import os
 from typing import List
 
-from pwspy.dataTypes import AcqDir, Roi
+from pwspy.dataTypes import Acquisition, Roi
 from pwspy.dataTypes._other import RoiFile
 
 
@@ -29,7 +29,7 @@ class RoiConverter:
     The key difference here is that the new files contain an array of vertices
     that specify the outline of the roiFile. Without these vertices they must be
     calculated using the concave hull method which is slow."""
-    def __init__(self, cells: List[AcqDir]):
+    def __init__(self, cells: List[Acquisition]):
         for cell in cells:
             logger = logging.getLogger(__name__)
             logger.info(cell.filePath)

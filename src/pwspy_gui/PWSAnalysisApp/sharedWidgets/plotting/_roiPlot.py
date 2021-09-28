@@ -47,11 +47,11 @@ class RoiParams:
 
 class RoiPlot(QWidget):
     """Adds GUI handling for ROIs."""
-    roiDeleted = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # Indicates that an ROI deletion was initiated by this widget.
-    roiModified = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # Indicates that an ROI modification was initiated by this widget.
-    roiCreated = pyqtSignal(pwsdt.AcqDir, pwsdt.RoiFile)  # Indicates that an ROI modification was created by this widget.
+    roiDeleted = pyqtSignal(pwsdt.Acquisition, pwsdt.RoiFile)  # Indicates that an ROI deletion was initiated by this widget.
+    roiModified = pyqtSignal(pwsdt.Acquisition, pwsdt.RoiFile)  # Indicates that an ROI modification was initiated by this widget.
+    roiCreated = pyqtSignal(pwsdt.Acquisition, pwsdt.RoiFile)  # Indicates that an ROI modification was created by this widget.
 
-    def __init__(self, acqDir: pwsdt.AcqDir, data: np.ndarray, roiManager: ROIManager, parent=None, flags: QtCore.Qt.WindowFlags = None):
+    def __init__(self, Acquisition: pwsdt.Acquisition, data: np.ndarray, roiManager: ROIManager, parent=None, flags: QtCore.Qt.WindowFlags = None):
         if flags is not None:
             super().__init__(parent, flags=flags)
         else:
@@ -78,8 +78,8 @@ class RoiPlot(QWidget):
         layout.addWidget(self._plotWidget)
         self.setLayout(layout)
 
-        self.metadata: pwsdt.AcqDir = None
-        self.setMetadata(acqDir)
+        self.metadata: pwsdt.Acquisition = None
+        self.setMetadata(Acquisition)
 
         self.annot = self._plotWidget.ax.annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
                             bbox=dict(boxstyle="round", fc="w"),
@@ -99,7 +99,7 @@ class RoiPlot(QWidget):
     def setImageData(self, data: np.ndarray):
         self._plotWidget.setImageData(data)
 
-    def setMetadata(self, metadata: pwsdt.AcqDir):
+    def setMetadata(self, metadata: pwsdt.Acquisition):
         """Refresh the ROIs based on a new metadata. Also needs to be provided with the data for the image to display."""
         self.metadata = metadata
         self._clearRois()
