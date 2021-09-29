@@ -44,11 +44,19 @@ class BGRoiDrawer:
         if analysisname is None:
             return
         else:
+            self._threadException = None
             def runInThread(acqList=acqs, anName=analysisname):
-                self.drawBackgroundROIs(acqList, anName)
+                try:
+                    self.drawBackgroundROIs(acqList, anName)
+                except Exception as e:
+                    logging.getLogger(__name__).exception(e)
+                    self._threadException = e
 
             def onFinished():
-                QMessageBox.information(self._parent, "Finished!", "Automatic background detection is completed.")
+                if self._threadException is not None:
+                    QMessageBox.information(self._parent, "Error!", str(self._threadException))
+                else:
+                    QMessageBox.information(self._parent, "Finished!", "Automatic background detection is completed.")
 
             self._processingThread.run = runInThread
             self._processingThread.finished.connect(onFinished)
