@@ -68,7 +68,7 @@ class RoiDrawer(QWidget):
         self.anViewer = AnalysisViewer(self.metadatas[self._mdIndex][0], self.metadatas[self._mdIndex][1], title, initialField=initialField, roiManager=self.roiManager)
         self.anViewer.roiPlot.roiDeleted.connect(lambda acq, roi: self.roiDeleted.emit(acq, roi))
         self.anViewer.roiPlot.roiModified.connect(lambda acq, roi: self.roiModified.emit(acq, roi))
-        self.anViewer.roiPlot.roiCreated.connect(lambda acq, roi: self.roiCreated.emit(acq, roi))
+        self.anViewer.roiPlot.roiCreated.connect(lambda acq, roi: self.roiCreated.emit(acq, roi, False))
 
         self.newRoiDlg = NewRoiDlg(self)
 

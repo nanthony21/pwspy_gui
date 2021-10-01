@@ -96,7 +96,12 @@ class BGRoiDrawer:
             smthDisk = morphology.disk(15)
             bgMask = morphology.binary_closing(morphology.binary_opening(bgMask, smthDisk), smthDisk)  # Smoothing
             label = measure.label(bgMask)  # Identify and label connected components
-            largestLabel = np.argmax(np.bincount(label.flat)[1:]) + 1  # The number of the largest labeled region (We exclude the 0th item and then add 1 to avoid including the negative region (labeled 0))
+            try:
+                largestLabel = np.argmax(np.bincount(label.flat)[1:]) + 1  # The number of the largest labeled region (We exclude the 0th item and then add 1 to avoid including the negative region (labeled 0))
+            except ValueError: # If there are no labeled regions then we will get `attempt to get argmax of an empty sequence here.                logger.info(f"Skipping {acq.filePath}. No PWS analysis matching {analysisNamePattern} found.")
+                logger.info(f"Skipping {acq.filePath}. No background region found.")
+                skipped += 1
+                continue
             mask = label == largestLabel  # Our background region should be the largest non-zero region
             roi = pwsdt.Roi.fromMask(mask=mask)
             if self._roiManager is None:
