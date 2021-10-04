@@ -73,8 +73,8 @@ if __name__ == '__main__':
         axes[1].legend()
 
         fileFrame = pd.DataFrame([{'setting': setting, 'material': m[1], 'cube': cube} for setting in settings for m in materials for cube in glob(
-            os.path.join(rootDir, setting, 'er', m[0],'Cell*'))])  # Convert the folder structure to a dataframe labeled with NA setting, Material, and the ImCube objects.
-        df = loadAndProcess(fileFrame, processIm, parallel=True)  # Returns a dataframe matching the form of `fileFrame` except the filepaths have been replaced with ImCube objects (The filepaths have been loaded and processed using the `processIms` function.).
+            os.path.join(rootDir, setting, 'er', m[0],'Cell*'))])  # Convert the folder structure to a dataframe labeled with NA setting, Material, and the PwsCube objects.
+        df = loadAndProcess(fileFrame, processIm, parallel=True)  # Returns a dataframe matching the form of `fileFrame` except the filepaths have been replaced with PwsCube objects (The filepaths have been loaded and processed using the `processIms` function.).
 
         theoryR = er.getTheoreticalReflectances(list(zip(*materials))[1], df['cube'][0].wavelengths, numericalAperture=na)
         matCombos = er.generateMaterialCombos(list(zip(*materials))[1])

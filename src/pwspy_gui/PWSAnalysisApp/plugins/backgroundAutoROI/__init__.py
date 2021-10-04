@@ -16,15 +16,15 @@ class BackgroundAutoROIPlugin(CellSelectorPlugin):
         self._selector = selector
         self._parentWidget = parent
 
-    def onCellsSelected(self, cells: t_.List[pwsdt.AcqDir]):
+    def onCellsSelected(self, cells: t_.List[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 
-    def onReferenceSelected(self, cell: pwsdt.AcqDir):
+    def onReferenceSelected(self, cell: pwsdt.Acquisition):
         """This method will be called when the CellSelector indicates that it has had a new reference selected."""
         pass
 
-    def onNewCellsLoaded(self, cells: t_.List[pwsdt.AcqDir]):
+    def onNewCellsLoaded(self, cells: t_.List[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that new cells have been loaded to the selector."""
         pass
 
@@ -41,6 +41,6 @@ class BackgroundAutoROIPlugin(CellSelectorPlugin):
         """The header names for each column."""
         return tuple()
 
-    def getTableWidgets(self, acq: pwsdt.AcqDir) -> t_.Sequence[QWidget]:
+    def getTableWidgets(self, acq: pwsdt.Acquisition) -> t_.Sequence[QWidget]:
         """provide a widget for each additional column to represent `acq`"""
         return tuple()

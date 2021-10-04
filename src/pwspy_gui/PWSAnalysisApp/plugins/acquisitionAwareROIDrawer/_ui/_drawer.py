@@ -3,7 +3,7 @@ import typing as t_
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from pwspy import dataTypes as pwsdt
-from pwspy.utility.acquisition import SeqAcqDir
+from pwspy.utility.acquisition import SequenceAcquisition
 
 from pwspy_gui.PWSAnalysisApp._roiManager import _DefaultROIManager
 from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
@@ -21,7 +21,7 @@ if t_.TYPE_CHECKING:
 
 
 class SeqRoiDrawer(QWidget):
-    def __init__(self, controller: SequenceController, metadatas: t_.List[t_.Tuple[SeqAcqDir, t_.Optional[AnalysisResultsComboType]]], roiManager: ROIManager, parent: QWidget = None, flags=QtCore.Qt.Window):
+    def __init__(self, controller: SequenceController, metadatas: t_.List[t_.Tuple[SequenceAcquisition, t_.Optional[AnalysisResultsComboType]]], roiManager: ROIManager, parent: QWidget = None, flags=QtCore.Qt.Window):
         super().__init__(parent=parent, flags=flags)
         self.setWindowTitle("Sequence-Aware ROI Drawer")
         self._seqController = controller
@@ -67,7 +67,7 @@ class SeqRoiDrawer(QWidget):
     def _handleAnimationEvent(self, axis: int):
         self._buttonBars[axis].selectNextButton()
 
-    def _drawMetaDataChangeUnprompted(self, acq: pwsdt.AcqDir):
+    def _drawMetaDataChangeUnprompted(self, acq: pwsdt.Acquisition):
         if not self._ignoreDrawerSignals:
             idxs = self._seqController.getIndicesForAcquisition(acq)
             for idx, bBar in zip(idxs, self._buttonBars):

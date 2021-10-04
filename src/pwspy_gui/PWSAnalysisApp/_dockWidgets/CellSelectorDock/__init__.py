@@ -105,7 +105,7 @@ class CellSelectorDock(CellSelector, QDockWidget):
             actions.append(action)  # Without this the actions get deleted before the menu is shown.
         menu.exec(self._pluginsButton.mapToGlobal(QPoint(0, self._pluginsButton.height())))
 
-    def _addCells(self, acquisitions: t_.List[pwsdt.AcqDir], workingDir: str):
+    def _addCells(self, acquisitions: t_.List[pwsdt.Acquisition], workingDir: str):
         workingDir = str(workingDir)  # This prevents problems if we pass a Path from pathlib instead.
         cellItems = {}
         for acq in acquisitions:
@@ -152,12 +152,12 @@ class CellSelectorDock(CellSelector, QDockWidget):
             expr = self._expressionFilter.text()
             if expr.strip() != '':
                 analyses = []
-                if item.acqDir.pws:
-                    analyses += item.acqDir.pws.getAnalyses()
-                if item.acqDir.dynamics:
-                    analyses += item.acqDir.dynamics.getAnalyses()
+                if item.Acquisition.pws:
+                    analyses += item.Acquisition.pws.getAnalyses()
+                if item.Acquisition.dynamics:
+                    analyses += item.Acquisition.dynamics.getAnalyses()
                 try:
-                    roiNames, roiNums, fformats = zip(*item.acqDir.getRois())
+                    roiNames, roiNums, fformats = zip(*item.Acquisition.getRois())
                 except ValueError as ve:  # If an acquisition has no ROIs then the 0 items returned can't be unpacked to 3 variables
                     roiNames = []; roiNums = []; fformats = []
                 try:
@@ -165,7 +165,7 @@ class CellSelectorDock(CellSelector, QDockWidget):
                                                 analyses=analyses,
                                                 roiNames=roiNames,
                                                 roiNums=roiNums,
-                                                idTag=item.acqDir.idTag)))
+                                                idTag=item.Acquisition.idTag)))
                 except Exception as e:
                     QMessageBox.information(self, 'Hmm', f'{expr} is not a valid boolean expression.')
                     logging.getLogger(__name__).exception(e)
@@ -190,7 +190,7 @@ class CellSelectorDock(CellSelector, QDockWidget):
         errs = []
         for f in fileNames:
             try:
-                acqs.append(pwsdt.AcqDir(f))
+                acqs.append(pwsdt.Acquisition(f))
             except OSError as e:
                 logger = logging.getLogger(__name__)
                 errs.append(f)
@@ -203,49 +203,49 @@ class CellSelectorDock(CellSelector, QDockWidget):
         self._addCells(acqs, workingDir)
         self._updateFilters()
 
-    def getSelectedCellMetas(self) -> t_.Tuple[pwsdt.AcqDir]:
-        return tuple(i.acqDir for i in self._tableWidget.selectedCellItems)
+    def getSelectedCellMetas(self) -> t_.Tuple[pwsdt.Acquisition]:
+        return tuple(i.Acquisition for i in self._tableWidget.selectedCellItems)
 
-    def getAllCellMetas(self) -> t_.Tuple[pwsdt.AcqDir]:
+    def getAllCellMetas(self) -> t_.Tuple[pwsdt.Acquisition]:
         return tuple(self._tableWidget.cellItems.keys())
 
-    def getSelectedReferenceMeta(self) -> t_.Optional[pwsdt.AcqDir]:
+    def getSelectedReferenceMeta(self) -> t_.Optional[pwsdt.Acquisition]:
         return self._refTableWidget.selectedReferenceMeta
 
-    def setSelectedCells(self, cells: t_.List[pwsdt.AcqDir]):
+    def setSelectedCells(self, cells: t_.List[pwsdt.Acquisition]):
         idTags = [i.idTag for i in cells]
         for item in self._tableWidget.cellItems.values():
-            if item.acqDir.idTag in idTags:
+            if item.Acquisition.idTag in idTags:
                 item.setSelected(True)
             else:
                 item.setSelected(False)
 
-    def setSelectedReference(self, ref: pwsdt.AcqDir):
+    def setSelectedReference(self, ref: pwsdt.Acquisition):
         idTag = ref.idTag
         for i in range(self._refTableWidget.rowCount()):
             refitem: ReferencesTableItem = self._refTableWidget.item(i, 0)
-            if refitem.item.acqDir.idTag == idTag:
+            if refitem.item.Acquisition.idTag == idTag:
                 refitem.setSelected(True)
             else:
                 refitem.setSelected(False)
 
-    def setHighlightedCells(self, cells: t_.List[pwsdt.AcqDir]):
+    def setHighlightedCells(self, cells: t_.List[pwsdt.Acquisition]):
         idTags = [i.idTag for i in cells]
         for item in self._tableWidget.cellItems.values():
-            if item.acqDir.idTag in idTags:
+            if item.Acquisition.idTag in idTags:
                 item.setHighlighted(True)
             else:
                 item.setHighlighted(False)
 
-    def setHighlightedReference(self, ref: pwsdt.AcqDir):
+    def setHighlightedReference(self, ref: pwsdt.Acquisition):
         idTag = ref.idTag
         for i in range(self._refTableWidget.rowCount()):
             refitem: ReferencesTableItem = self._refTableWidget.item(i, 0)
-            if refitem.item.acqDir.idTag == idTag:
+            if refitem.item.Acquisition.idTag == idTag:
                 refitem.setHighlighted(True)
             else:
                 refitem.setHighlighted(False)
 
-    def refreshCellItems(self, cells: t_.List[pwsdt.AcqDir] = None):
+    def refreshCellItems(self, cells: t_.List[pwsdt.Acquisition] = None):
         """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
         self._tableWidget.refreshCellItems(cells=cells)

@@ -77,7 +77,7 @@ class PlottingDock(QDockWidget):
         self._buttonGroup.addButton(self._plotRButton)
         [i.setCheckable(True) for i in self._buttonGroup.buttons()]
         self._buttonGroup.buttons()[0].setChecked(True)
-        frame = QFrame()
+        frame = QFrame(parent=self)
         frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
         l = QVBoxLayout()
         [l.addWidget(i) for i in self._buttonGroup.buttons()]
@@ -114,7 +114,8 @@ class PlottingDock(QDockWidget):
         metadatas = [(p.acq, p.analysis) for p in self._plots]
         if len(metadatas) > 0:  # Otherwise we crash
             try:
-                self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, self)
+                mainWindow = QApplication.instance().window
+                self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, parent=mainWindow)
             except Exception as e:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self, "Error", "An error occured. Please see the log file.")
@@ -155,7 +156,7 @@ class PlottingDock(QDockWidget):
         else:
             raise ValueError("`enable` string not recognized.")
 
-    def _generatePlots(self, cells: List[pwsdt.AcqDir]):
+    def _generatePlots(self, cells: List[pwsdt.Acquisition]):
         try:
             self.cellMetas = cells
             analysisName = self._anNameEdit.text()

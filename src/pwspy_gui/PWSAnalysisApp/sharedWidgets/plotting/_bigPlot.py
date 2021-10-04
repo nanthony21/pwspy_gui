@@ -31,7 +31,7 @@ from matplotlib.figure import Figure
 from pwspy_gui.sharedWidgets.rangeSlider import QRangeSlider
 import typing
 if typing.TYPE_CHECKING:
-    from pwspy.dataTypes import AcqDir
+    from pwspy.dataTypes import Acquisition
 
 
 class BigPlot(QWidget):
@@ -169,8 +169,8 @@ class RangeDialog(QDialog):
 
 if __name__ == '__main__':
     fPath = r'C:\Users\nicke\Desktop\demo\toast\t\Cell1'
-    from pwspy.dataTypes import AcqDir
-    acq = AcqDir(fPath)
+    from pwspy.dataTypes import Acquisition
+    acq = Acquisition(fPath)
     import sys
     app = QApplication(sys.argv)
     b = BigPlot(acq.dynamics.getThumbnail())

@@ -31,7 +31,7 @@ from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import Conglomerat
 import typing
 if typing.TYPE_CHECKING:
     from typing import Tuple, List, Optional
-    from pwspy.dataTypes import AcqDir
+    from pwspy.dataTypes import Acquisition
     from pwspy_gui.PWSAnalysisApp.utilities.conglomeratedAnalysis import ConglomerateCompilerSettings, ConglomerateCompilerResults
     from pwspy.analysis.warnings import AnalysisWarning
 
@@ -44,11 +44,11 @@ class CompilationManager(QtCore.QObject):
         self.window = window
 
     @safeCallback
-    def run(self) -> List[Tuple[AcqDir, List[Tuple[ConglomerateCompilerResults, Optional[List[AnalysisWarning]]]]]]:
+    def run(self) -> List[Tuple[Acquisition, List[Tuple[ConglomerateCompilerResults, Optional[List[AnalysisWarning]]]]]]:
         roiName: str = self.window.resultsTable.getRoiName()
         analysisName: str = self.window.resultsTable.getAnalysisName()
         settings: ConglomerateCompilerSettings = self.window.resultsTable.getSettings()
-        cellMetas: List[AcqDir] = self.window.cellSelector.getSelectedCellMetas()
+        cellMetas: List[Acquisition] = self.window.cellSelector.getSelectedCellMetas()
         if len(cellMetas) == 0:
             QMessageBox.information(self.window, "What?", "Please select at least one cell.")
             return None
@@ -69,7 +69,7 @@ class CompilationManager(QtCore.QObject):
     class CompilationThread(QThread):
         errorOccurred = QtCore.pyqtSignal(Exception)
 
-        def __init__(self, cellMetas: List[AcqDir], compiler: ConglomerateCompiler, roiNamePattern: str, analysisNamePattern: str):
+        def __init__(self, cellMetas: List[Acquisition], compiler: ConglomerateCompiler, roiNamePattern: str, analysisNamePattern: str):
             super().__init__()
             self.cellMetas = cellMetas
             self.roiNamePattern = roiNamePattern
@@ -89,7 +89,7 @@ class CompilationManager(QtCore.QObject):
                 self.errorOccurred.emit(e)
 
         @staticmethod
-        def _process(acq: AcqDir, compiler: ConglomerateCompiler, roiNamePattern: str, analysisNamePattern: str) -> Tuple[AcqDir, List[Tuple[ConglomerateCompilerResults, List[AnalysisWarning]]]]:
+        def _process(acq: Acquisition, compiler: ConglomerateCompiler, roiNamePattern: str, analysisNamePattern: str) -> Tuple[Acquisition, List[Tuple[ConglomerateCompilerResults, List[AnalysisWarning]]]]:
             rois = [acq.loadRoi(name, num, fformat) for name, num, fformat in acq.getRois() if re.match(roiNamePattern, name)]
             pwsAnalysisResults = [acq.pws.loadAnalysis(name) for name in acq.pws.getAnalyses() if re.match(analysisNamePattern, name)] if acq.pws is not None else []
             dynamicAnalysisResults = [acq.dynamics.loadAnalysis(name) for name in acq.dynamics.getAnalyses() if re.match(analysisNamePattern, name)] if acq.dynamics is not None else []

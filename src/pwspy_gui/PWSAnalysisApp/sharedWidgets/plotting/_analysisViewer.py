@@ -30,7 +30,7 @@ from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._roiPlot import RoiPlot
 class AnalysisViewer(AnalysisPlotter, QWidget):
     """This class is a window that provides convenient viewing of a pws acquisition, analysis, and related images.
     It expands upon the functionality of `BigPlot` which handles ROIs but not analysis images."""
-    def __init__(self, metadata: pwsdt.AcqDir, analysisLoader: AnalysisPlotter.AnalysisResultsComboType, title: str, roiManager: ROIManager, parent=None,
+    def __init__(self, metadata: pwsdt.Acquisition, analysisLoader: AnalysisPlotter.AnalysisResultsComboType, title: str, roiManager: ROIManager, parent=None,
                  initialField=AnalysisPlotter.PlotFields.Thumbnail, flags=None):
         if flags is not None:
             QWidget.__init__(self, parent=parent, flags=flags)
@@ -96,7 +96,7 @@ class AnalysisViewer(AnalysisPlotter, QWidget):
             self.analysisCombo.setCurrentText(field.name)
         self.roiPlot.setImageData(self.data)
 
-    def setMetadata(self, md: AcqDir, analysis: Optional[ConglomerateAnalysisResults] = None):
+    def setMetadata(self, md: Acquisition, analysis: Optional[ConglomerateAnalysisResults] = None):
         """Change this widget to display data for a different acquisition and optionally an analysis."""
         try:
             super().setMetadata(md, analysis)

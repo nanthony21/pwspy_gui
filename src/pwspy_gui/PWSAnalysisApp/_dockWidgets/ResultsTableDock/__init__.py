@@ -30,7 +30,7 @@ from ..._taskManagers.compilationManager import CompilationManager
 from ...componentInterfaces import ResultsTableController
 
 if typing.TYPE_CHECKING:
-    from pwspy.dataTypes import AcqDir, ICMetaData
+    from pwspy.dataTypes import Acquisition, ICMetaData
     from pwspy.analysis.pws import PWSAnalysisSettings
     from pwspy.analysis.warnings import AnalysisWarning
 
@@ -43,7 +43,7 @@ class ResultsTableControllerDock(ResultsTableController, QDockWidget):
         self._widget = QWidget()
         self._widget.setLayout(QGridLayout())
         self._table = ResultsTable()
-        checkBoxFrame = QFrame()
+        checkBoxFrame = QFrame(parent=self)
         checkBoxFrame.setLayout(QVBoxLayout())
         checkBoxFrame.layout().setContentsMargins(1, 1, 1, 1)
         checkBoxFrame.layout().setSpacing(1)
@@ -84,7 +84,7 @@ class ResultsTableControllerDock(ResultsTableController, QDockWidget):
         self._widget.layout().addWidget(self._table, 0, 1)
         self.setWidget(self._widget)
 
-    def addCompilationResult(self, result: ConglomerateCompilerResults, acquisition: AcqDir):
+    def addCompilationResult(self, result: ConglomerateCompilerResults, acquisition: Acquisition):
         self._table.addItem(ResultsTableItem(result, acquisition))
 
     def clearCompilationResults(self):
@@ -116,7 +116,7 @@ class ResultsTableControllerDock(ResultsTableController, QDockWidget):
     def getAnalysisName(self) -> str:
         return self._analysisNameEdit.text()
 
-    def _handleCompilationResults(self, inVal: typing.List[typing.Tuple[AcqDir, typing.List[typing.Tuple[ConglomerateCompilerResults, typing.Optional[typing.List[AnalysisWarning]]]]]]):
+    def _handleCompilationResults(self, inVal: typing.List[typing.Tuple[Acquisition, typing.List[typing.Tuple[ConglomerateCompilerResults, typing.Optional[typing.List[AnalysisWarning]]]]]]):
         #  Display warnings if necessary.
         warningStructure = []
         for acq, roiList in inVal:

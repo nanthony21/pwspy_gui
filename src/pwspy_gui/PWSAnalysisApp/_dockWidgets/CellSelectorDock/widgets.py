@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import QPushButton, QTableWidgetItem, QTableWidget, QAbstra
     QInputDialog, QHeaderView
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets import ScrollableMessageBox
-from pwspy.dataTypes import AcqDir, ICMetaData, DynMetaData
+from pwspy.dataTypes import Acquisition, ICMetaData, DynMetaData
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.dictDisplayTree import DictDisplayTreeDialog
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.tables import NumberTableWidgetItem
@@ -96,8 +96,8 @@ class PreferencesMetadata:
 
 class CellTableWidgetItem:
     """Represents a single row of the CellTableWidget and corresponds to a single PWS acquisition."""
-    def __init__(self, acq: AcqDir, label: str, num: int, additionalWidgets: t_.Sequence[QWidget] = None):
-        self.acqDir = acq
+    def __init__(self, acq: Acquisition, label: str, num: int, additionalWidgets: t_.Sequence[QWidget] = None):
+        self.Acquisition = acq
         self.num = num
         self.path = label
         self.pluginWidgets = [] if additionalWidgets is None else additionalWidgets
@@ -109,7 +109,7 @@ class CellTableWidgetItem:
         self.numLabel.setToolTip(acq.idTag)
         self.roiLabel = NumberTableWidgetItem(0)
         self.anLabel = NumberTableWidgetItem(0)
-        self.notesButton.released.connect(self.acqDir.editNotes)
+        self.notesButton.released.connect(self.Acquisition.editNotes)
         self.pLabel = QTableWidgetItem()
         self.pLabel.setToolTip("Indicates if PWS measurement is present")
         self.dLabel = QTableWidgetItem()
@@ -120,7 +120,7 @@ class CellTableWidgetItem:
             i.setTextAlignment(QtCore.Qt.AlignCenter)
         for i in [self.pathLabel, self.pLabel, self.dLabel, self.fLabel]:  # Make uneditable
             i.setFlags(i.flags() ^ QtCore.Qt.ItemIsEditable)
-        for metadata, label in [(self.acqDir.pws, self.pLabel), (self.acqDir.dynamics, self.dLabel)]:
+        for metadata, label in [(self.Acquisition.pws, self.pLabel), (self.Acquisition.dynamics, self.dLabel)]:
             if metadata is not None:
                 label.setText('Y')
                 label.setBackground(QtCore.Qt.darkGreen)
@@ -128,11 +128,11 @@ class CellTableWidgetItem:
             else:
                 label.setText('N')
                 label.setBackground(QtCore.Qt.white)
-        if len(self.acqDir.fluorescence) != 0: self.fLabel.setText('Y'); self.fLabel.setBackground(QtCore.Qt.darkGreen)
+        if len(self.Acquisition.fluorescence) != 0: self.fLabel.setText('Y'); self.fLabel.setBackground(QtCore.Qt.darkGreen)
         else: self.fLabel.setText('N'); self.fLabel.setBackground(QtCore.Qt.white)
         self._items = [self.pathLabel, self.numLabel, self.roiLabel, self.anLabel] + self.pluginWidgets #This list is used for changing background color and for setting all items selected.
         self.refresh()
-        mdPath = os.path.join(self.acqDir.filePath, 'AnAppPrefs.json')
+        mdPath = os.path.join(self.Acquisition.filePath, 'AnAppPrefs.json')
         self.md: PreferencesMetadata
         try:
             self.md = PreferencesMetadata.fromJson(mdPath)
@@ -190,23 +190,23 @@ class CellTableWidgetItem:
 
     def refresh(self):
         """Set the number of roiFile's and analyses. Update the tooltips."""
-        rois = self.acqDir.getRois()
+        rois = self.Acquisition.getRois()
         self.roiLabel.setNumber(len(rois))
         anNumber = 0  # This is in case the next few statements evaluate to false.
         anToolTip = ""
-        if self.acqDir.pws is not None:
-            pwsAnalyses = self.acqDir.pws.getAnalyses()
+        if self.Acquisition.pws is not None:
+            pwsAnalyses = self.Acquisition.pws.getAnalyses()
             anNumber += len(pwsAnalyses)
             if len(pwsAnalyses) != 0:
                 anToolTip += "PWS:" + ', '.join(pwsAnalyses)
-        if self.acqDir.dynamics is not None:
-            dynAnalyses = self.acqDir.dynamics.getAnalyses()
+        if self.Acquisition.dynamics is not None:
+            dynAnalyses = self.Acquisition.dynamics.getAnalyses()
             anNumber += len(dynAnalyses)
             if len(dynAnalyses) != 0:
                 anToolTip += "\nDYN:" + ', '.join(dynAnalyses)
         self.anLabel.setNumber(anNumber)
         self.anLabel.setToolTip(anToolTip)
-        if self.acqDir.getNotes() != '':
+        if self.Acquisition.getNotes() != '':
             self.notesButton.setStyleSheet('QPushButton { background-color: lightgreen;}')
         else:
             self.notesButton.setStyleSheet('QPushButton { background-color: lightgrey;}')
@@ -249,7 +249,7 @@ class CellTableWidget(QTableWidget):
         self.verticalHeader().hide()
         [self.setColumnWidth(i, w) for i, (w, resizable) in enumerate(columns.values())]  # Set the column widths
         [self.horizontalHeader().setSectionResizeMode(i, self.horizontalHeader().Fixed) for i, (w, resizable) in enumerate(columns.values()) if not resizable] #set the notes, and p/d/f columns nonresizeable
-        self.cellItems: t_.Dict[AcqDir, CellTableWidgetItem] = {}
+        self.cellItems: t_.Dict[Acquisition, CellTableWidgetItem] = {}
         #This makes the items stay looking selected even when the table is inactive
         self.setStyleSheet("""QTableWidget::item:active {
                                 selection-background-color: darkblue;
@@ -270,14 +270,14 @@ class CellTableWidget(QTableWidget):
         _ = {i.row: i for i in self.cellItems.values()} #Cell items keyed by their current row position.
         return tuple(_[i] for i in rowIndices)
 
-    def refreshCellItems(self, cells: t_.List[AcqDir] = None):
+    def refreshCellItems(self, cells: t_.List[Acquisition] = None):
         """`Cells` indicates which cells need refreshing. If cells is None then all cells will be refreshed."""
         if cells is None:
             cells = self.cellItems.keys()
         for acq in cells:
             self.cellItems[acq].refresh()
 
-    def addCellItems(self, items: t_.Dict[AcqDir, CellTableWidgetItem]) -> None:
+    def addCellItems(self, items: t_.Dict[Acquisition, CellTableWidgetItem]) -> None:
         row = len(self.cellItems)
         self.setSortingEnabled(False)
         self.setRowCount(row + len(items))
@@ -305,7 +305,7 @@ class CellTableWidget(QTableWidget):
 
     def _showContextMenu(self, point: QtCore.QPoint):
         if len(self.selectedCellItems) > 0:
-            menu = QMenu("Context Menu")
+            menu = QMenu("Context Menu", parent=self)
             state = not self.selectedCellItems[0].isInvalid()
             stateString = "Disable Cell(s)" if state else "Enable Cell(s)"
             refState = not self.selectedCellItems[0].isReference()
@@ -322,7 +322,7 @@ class CellTableWidget(QTableWidget):
             anAction.triggered.connect(self._displayAnalysisSettings)
             if os.name == 'nt':  # Must be on windows.
                 folderAction = menu.addAction("Open folder")
-                folderAction.triggered.connect(lambda: [os.startfile(os.path.realpath(cellItem.acqDir.filePath)) for cellItem in self.selectedCellItems])
+                folderAction.triggered.connect(lambda: [os.startfile(os.path.realpath(cellItem.Acquisition.filePath)) for cellItem in self.selectedCellItems])
 
             menu.addSeparator()
             delAnAction = menu.addAction("Delete analysis by name")
@@ -338,12 +338,12 @@ class CellTableWidget(QTableWidget):
             return
         deletableCells = []
         for i in self.selectedCellItems:
-            if i.acqDir.pws is not None:
-                if anName in i.acqDir.pws.getAnalyses():
-                    deletableCells.append(i.acqDir.pws)
-            if i.acqDir.dynamics is not None:
-                if anName in i.acqDir.dynamics.getAnalyses():
-                    deletableCells.append(i.acqDir.dynamics)
+            if i.Acquisition.pws is not None:
+                if anName in i.Acquisition.pws.getAnalyses():
+                    deletableCells.append(i.Acquisition.pws)
+            if i.Acquisition.dynamics is not None:
+                if anName in i.Acquisition.dynamics.getAnalyses():
+                    deletableCells.append(i.Acquisition.dynamics)
         if len(deletableCells)==0:
             QMessageBox.information(self, "Hmm", "No matching analysis files were found.")
         else:
@@ -361,8 +361,8 @@ class CellTableWidget(QTableWidget):
             return
         deletableCells = []
         for i in self.selectedCellItems:
-            if roiName in [roiName for roiName, roiNum, fformat in i.acqDir.getRois()]:
-                deletableCells.append(i.acqDir)
+            if roiName in [roiName for roiName, roiNum, fformat in i.Acquisition.getRois()]:
+                deletableCells.append(i.Acquisition)
         if len(deletableCells)==0:
             QMessageBox.information(self, "Hmm", "No matching ROI files were found.")
         else:
@@ -374,14 +374,14 @@ class CellTableWidget(QTableWidget):
     def _displayAnalysisSettings(self):
         pwsAnalyses = set()
         for i in self.selectedCellItems:
-            if i.acqDir.pws is not None:
+            if i.Acquisition.pws is not None:
                 #We assume that analyses with the same name have the same settings
-                pwsAnalyses.update(i.acqDir.pws.getAnalyses())
+                pwsAnalyses.update(i.Acquisition.pws.getAnalyses())
         for an in pwsAnalyses:
             for i in self.selectedCellItems:
-                if i.acqDir.pws is not None:
-                    if an in i.acqDir.pws.getAnalyses():
-                        analysis: PWSAnalysisResults = i.acqDir.pws.loadAnalysis(an)
+                if i.Acquisition.pws is not None:
+                    if an in i.Acquisition.pws.getAnalyses():
+                        analysis: PWSAnalysisResults = i.Acquisition.pws.loadAnalysis(an)
                         settingsDict = analysis.settings.asDict()
                         settingsDict['referenceIdTag'] = analysis.referenceIdTag  # Add useful runtime information from the analysis.
                         d = DictDisplayTreeDialog(self, settingsDict, title=an)
@@ -389,13 +389,13 @@ class CellTableWidget(QTableWidget):
                         break
         dynAnalysis = set()
         for i in self.selectedCellItems:
-            if i.acqDir.dynamics is not None:
-                dynAnalysis.update(i.acqDir.dynamics.getAnalyses())
+            if i.Acquisition.dynamics is not None:
+                dynAnalysis.update(i.Acquisition.dynamics.getAnalyses())
         for an in dynAnalysis:
             for i in self.selectedCellItems:
-                if i.acqDir.dynamics is not None:
-                    if an in i.acqDir.dynamics.getAnalyses():
-                        analysis: DynamicsAnalysisResults = i.acqDir.dynamics.loadAnalysis(an)
+                if i.Acquisition.dynamics is not None:
+                    if an in i.Acquisition.dynamics.getAnalyses():
+                        analysis: DynamicsAnalysisResults = i.Acquisition.dynamics.loadAnalysis(an)
                         settingsDict = analysis.settings.asDict()
                         settingsDict['referenceIdTag'] = analysis.referenceIdTag  # Add useful runtime information
                         d = DictDisplayTreeDialog(self, settingsDict, title=an)
@@ -404,7 +404,7 @@ class CellTableWidget(QTableWidget):
 
     def _displayCellMetadata(self):
         for i in self.selectedCellItems:
-            d = DictDisplayTreeDialog(self, i.acqDir.pws.dict, title=os.path.join(i.path, f"Cell{i.num}"))
+            d = DictDisplayTreeDialog(self, i.Acquisition.pws.dict, title=os.path.join(i.path, f"Cell{i.num}"))
             d.show()
 
     def _toggleSelectedCellsInvalid(self, state: bool):
@@ -484,19 +484,19 @@ class ReferencesTable(QTableWidget):
                             break
 
     @property
-    def selectedReferenceMeta(self) -> t_.Optional[AcqDir]:
+    def selectedReferenceMeta(self) -> t_.Optional[Acquisition]:
         """Returns the ICMetadata that have been selected. Return None if nothing is selected."""
         items: List[ReferencesTableItem] = self.selectedItems()
         assert len(items) <= 1
         if len(items) == 0:
             return None
         else:
-            return items[0].item.acqDir
+            return items[0].item.Acquisition
 
     def _showContextMenu(self, point: QtCore.QPoint):
         items = self.selectedItems()
         if len(items) > 0:
-            menu = QMenu("Context Menu")
+            menu = QMenu("Context Menu", parent=self)
             refStateString = "Unset as Reference"
             refAction = menu.addAction(refStateString)
             refAction.triggered.connect(

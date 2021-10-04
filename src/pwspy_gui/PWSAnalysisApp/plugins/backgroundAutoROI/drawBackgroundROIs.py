@@ -1,4 +1,5 @@
 import logging
+import re
 import typing as t_
 
 from PyQt5 import QtCore
@@ -12,6 +13,7 @@ from pwspy_gui.sharedWidgets.dialogs import BusyDialog
 from skimage import filters, morphology, measure
 import matplotlib.pyplot as plt
 import pwspy.dataTypes as pwsdt
+import numpy as np
 
 DESCRIPTION = \
     """
@@ -37,20 +39,29 @@ class BGRoiDrawer:
         self._roiManager = roiManager
         self._processingThread = QThread(self._parent)
 
-    def run(self, acqs: t_.Sequence[pwsdt.AcqDir]):
+    def run(self, acqs: t_.Sequence[pwsdt.Acquisition]):
         analysisname = self._showDialog()
         if analysisname is None:
             return
         else:
+            self._threadException = None
             def runInThread(acqList=acqs, anName=analysisname):
-                self.drawBackgroundROIs(acqList, anName)
+                try:
+                    self.drawBackgroundROIs(acqList, anName)
+                except Exception as e:
+                    logging.getLogger(__name__).exception(e)
+                    self._threadException = e
 
             def onFinished():
-                QMessageBox.information(self._parent, "Finished!", "Automatic background detection is completed.")
+                if self._threadException is not None:
+                    QMessageBox.information(self._parent, "Error!", str(self._threadException))
+                else:
+                    QMessageBox.information(self._parent, "Finished!", "Automatic background detection is completed.")
 
             self._processingThread.run = runInThread
             self._processingThread.finished.connect(onFinished)
             self._processingThread.start()
+            QMessageBox.information(self._parent, "Be patient", 'A notification will appear when automatic background detection is complete.')
 
     def _showDialog(self) -> str:
         dlg = BGROIDialog(self._parent)
@@ -60,14 +71,23 @@ class BGRoiDrawer:
         else:
             return None
 
-    def drawBackgroundROIs(self, acqs: t_.Iterable[pwsdt.AcqDir], analysisName: str):
-        logger = logging.getLogger(__name__)
+    def drawBackgroundROIs(self, acqs: t_.Iterable[pwsdt.Acquisition], analysisNamePattern: str):
+        """
 
+        Args:
+            acqs: A list of Acquisition object to run.
+            analysisNamePattern: A regex pattern of the analysis file to use for detecting background
+        """
+        logger = logging.getLogger(__name__)
+        skipped = 0
         for i, acq in enumerate(acqs):
             try:
-                rms = acq.pws.loadAnalysis(analysisName).rms
-            except OSError:
-                logger.info(f"Skipping {acq.filePath}. No PWS analysis file found.")
+                anNames = acq.pws.getAnalyses()
+                anName = [name for name in anNames if re.match(analysisNamePattern, name)][0]  # Select the first analysis name that matches the regex pattern
+                rms = acq.pws.loadAnalysis(anName).rms
+            except IndexError:
+                logger.info(f"Skipping {acq.filePath}. No PWS analysis matching {analysisNamePattern} found.")
+                skipped += 1
                 continue
             logger.info(f"Auto-Drawing background ROI for acquisition {i+1} of {len(acqs)}")
             thresh = filters.threshold_otsu(rms)
@@ -76,12 +96,19 @@ class BGRoiDrawer:
             smthDisk = morphology.disk(15)
             bgMask = morphology.binary_closing(morphology.binary_opening(bgMask, smthDisk), smthDisk)  # Smoothing
             label = measure.label(bgMask)  # Identify and label connected components
-            mask = label == 1  # Our background region should be the largest non-zero region
+            try:
+                largestLabel = np.argmax(np.bincount(label.flat)[1:]) + 1  # The number of the largest labeled region (We exclude the 0th item and then add 1 to avoid including the negative region (labeled 0))
+            except ValueError: # If there are no labeled regions then we will get `attempt to get argmax of an empty sequence here.                logger.info(f"Skipping {acq.filePath}. No PWS analysis matching {analysisNamePattern} found.")
+                logger.info(f"Skipping {acq.filePath}. No background region found.")
+                skipped += 1
+                continue
+            mask = label == largestLabel  # Our background region should be the largest non-zero region
             roi = pwsdt.Roi.fromMask(mask=mask)
             if self._roiManager is None:
                 acq.saveRoi('bg', 0, roi, overwrite=True)
             else:
                 self._roiManager.createRoi(acq, roi, 'bg', 0, True)
+        logger.info(f"Skipped {skipped} of {len(acqs)} acquisitions")
 
 
 class BGROIDialog(QDialog):
@@ -105,7 +132,7 @@ class BGROIDialog(QDialog):
         grid = QGridLayout()
         grid.addWidget(self.description, 0, 0)
         form = QFormLayout()
-        form.addRow("Analysis Name:", self.analysisName)
+        form.addRow("Analysis Name (regex):", self.analysisName)
         grid.addLayout(form, 1, 0)
         ll = QHBoxLayout()
         ll.addWidget(self.okButton)

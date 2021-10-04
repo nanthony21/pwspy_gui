@@ -16,7 +16,7 @@
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-GUI applications related to PWS.
+GUI applications used for analysis and calibration of PWS (Partial Wave Spectroscopic) microscopy data.
 
 PWSAnalysisApp
 ----------------

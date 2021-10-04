@@ -65,7 +65,7 @@ class AnalysisManager(QtCore.QObject):
             self.app.window.cellSelector.refreshCellItems()  # Refresh our displayed cell info
 
     @safeCallback
-    def runSingle(self, anSettings: AbstractRuntimeAnalysisSettings) -> Tuple[str, AbstractAnalysisSettings, List[Tuple[List[AnalysisWarning], pwsdt.AcqDir]]]:
+    def runSingle(self, anSettings: AbstractRuntimeAnalysisSettings) -> Tuple[str, AbstractAnalysisSettings, List[Tuple[List[AnalysisWarning], pwsdt.Acquisition]]]:
         """Run a single analysis batch"""
         logger = logging.getLogger(__name__)
         userSpecifiedBinning: Optional[int] = None

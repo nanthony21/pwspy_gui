@@ -12,7 +12,7 @@ import os
 from pwspy_gui.PWSAnalysisApp.plugins.acquisitionAwareROIDrawer._control import SequenceController
 
 from ._ui import SeqRoiDrawer
-from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SeqAcqDir
+from pwspy.utility.acquisition.sequencerCoordinate import SequencerCoordinateRange, SequenceAcquisition
 from pwspy.utility.acquisition.steps import SequencerStep
 from pwspy.utility.acquisition import RuntimeSequenceSettings
 import pwspy.dataTypes as pwsdt
@@ -31,15 +31,15 @@ class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
         self._selector = selector
         self._parentWidget = parent
 
-    def onCellsSelected(self, cells: t_.List[pwsdt.AcqDir]):
+    def onCellsSelected(self, cells: t_.List[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that it has had new cells selected."""
         pass
 
-    def onReferenceSelected(self, cell: pwsdt.AcqDir):
+    def onReferenceSelected(self, cell: pwsdt.Acquisition):
         """This method will be called when the CellSelector indicates that it has had a new reference selected."""
         pass
 
-    def onNewCellsLoaded(self, cells: t_.List[pwsdt.AcqDir]):
+    def onNewCellsLoaded(self, cells: t_.List[pwsdt.Acquisition]):
         """This method will be called when the CellSelector indicates that new cells have been loaded to the selector."""
         pass
 
@@ -78,12 +78,12 @@ class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
         """The header names for each column."""
         return tuple()
 
-    def getTableWidgets(self, acq: pwsdt.AcqDir) -> t_.Sequence[QWidget]:
+    def getTableWidgets(self, acq: pwsdt.Acquisition) -> t_.Sequence[QWidget]:
         """provide a widget for each additional column to represent `acq`"""
         return tuple()
 
 
-    def _loadFromAcqs(self, acqs: t_.Sequence[pwsdt.AcqDir]) -> t_.Tuple[SequencerStep, t_.Tuple[SeqAcqDir, ...]]:
+    def _loadFromAcqs(self, acqs: t_.Sequence[pwsdt.Acquisition]) -> t_.Tuple[SequencerStep, t_.Tuple[SequenceAcquisition, ...]]:
         commonPath = os.path.commonpath([acq.filePath for acq in acqs])
         logger = logging.getLogger(__name__)
         logger.debug(f"New cells loaded at common path: {commonPath}")
@@ -102,7 +102,7 @@ class AcquisitionAwareRoiDrawerPlugin(CellSelectorPlugin):
             foundAcqs = []  # We only get here if a sequence file was found.
             for f in acqs:
                 try:
-                    foundAcqs.append(SeqAcqDir(f))
+                    foundAcqs.append(SequenceAcquisition(f))
                 except FileNotFoundError:
                     pass  # There may be "Cell" folders that don't contain a sequencer coordinate.
             foundAcqs = [acq for acq in foundAcqs if acq.sequencerCoordinate.uuid == sequenceRoot.uuid]  # Filter out acquisitions that don't have a matching UUID to the sequence file.

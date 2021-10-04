@@ -243,7 +243,7 @@ class VerticallyCompressedWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setLayout(QVBoxLayout())
-        self._contentsFrame = QFrame()
+        self._contentsFrame = QFrame(parent=self)
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.layout().addWidget(self._contentsFrame)
         self.layout().addItem(spacer)
