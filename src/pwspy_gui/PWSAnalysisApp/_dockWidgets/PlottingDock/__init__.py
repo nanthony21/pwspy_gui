@@ -114,7 +114,8 @@ class PlottingDock(QDockWidget):
         metadatas = [(p.acq, p.analysis) for p in self._plots]
         if len(metadatas) > 0:  # Otherwise we crash
             try:
-                self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, self)
+                mainWindow = QApplication.instance().window
+                self.roiDrawer = RoiDrawer(metadatas, QApplication.instance().roiManager, parent=mainWindow)
             except Exception as e:
                 logging.getLogger(__name__).exception(e)
                 QMessageBox.information(self, "Error", "An error occured. Please see the log file.")

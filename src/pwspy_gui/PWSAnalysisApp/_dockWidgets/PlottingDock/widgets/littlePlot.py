@@ -57,17 +57,17 @@ class LittlePlot(AnalysisPlotter, QWidget):
 
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
-            viewer = AnalysisViewer(metadata=self.acq, analysisLoader=self.analysis, title=self.title, roiManager=QApplication.instance().roiManager, parent=self, initialField=self.analysisField, flags=QtCore.Qt.Window)
+            mainWindow = QApplication.instance().window
+            viewer = AnalysisViewer(metadata=self.acq, analysisLoader=self.analysis, title=self.title, roiManager=QApplication.instance().roiManager, parent=mainWindow, initialField=self.analysisField, flags=QtCore.Qt.Window)
             viewer.show()
-
 
     def changeData(self, field: AnalysisPlotter.PlotFields):
         AnalysisPlotter.changeData(self, field)
         data = self.data
         data = data - np.percentile(data, 0.1)
         data = (data / np.percentile(data, 99.9) * 255)
-        data[data<0] = 0
-        data[data>255] = 255
+        data[data < 0] = 0
+        data[data > 255] = 255
         data = data.astype(np.uint8)
         p = QPixmap.fromImage(QImage(data.data, data.shape[1], data.shape[0], data.strides[0], QImage.Format_Grayscale8))
         self.imLabel.setPixmap(p)
