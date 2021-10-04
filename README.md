@@ -1,5 +1,7 @@
 # PWSpy_gui
-A collection of GUIs providing users with easy access to the pwspy library. The main application provided by this package is the PWS Analysis application. You can find a tutorial on using PWS Analysis [here](https://nanthony21.github.io/AnalysisIntroduction/demo.html)
+A collection of GUIs providing users with easy access to the pwspy library. The main application provided by this package is the PWS Analysis application. You can find a tutorial on using PWS Analysis [here](https://nanthony21.github.io/AnalysisIntroduction/demo.html)  
+
+![alt text](docs/Picture1.png)
 
 ## Documentation
 This project is automatically documented by "Sphinx". If you have Sphinx installed then you can compile documentation to HTML 
