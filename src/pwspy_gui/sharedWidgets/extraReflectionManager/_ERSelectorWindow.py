@@ -137,7 +137,7 @@ class ERSelectorWindow(QDialog):
         widgetItem: ERTreeWidgetItem = self.tree.itemAt(pos)
         if not isinstance(widgetItem, ERTreeWidgetItem):
             return  # Some treeItems exist which are not our custom ERTreeWidgetItem. Not menu for these items.
-        menu = QMenu()
+        menu = QMenu(self)
         displayAction = QAction("Display Info")
         displayAction.triggered.connect(lambda: self.displayInfo(widgetItem))
         menu.addAction(displayAction)

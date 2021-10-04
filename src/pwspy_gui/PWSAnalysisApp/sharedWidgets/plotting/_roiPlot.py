@@ -266,7 +266,7 @@ class RoiPlot(QWidget):
         def showSinCityDlg():
             dlg = SinCityDlg(self, self)
             dlg.show()
-        menu = QMenu("Export Menu")
+        menu = QMenu("Export Menu", parent=self)
         act = QAction("Colored Nuclei")
         act.triggered.connect(showSinCityDlg)
         menu.addAction(act)

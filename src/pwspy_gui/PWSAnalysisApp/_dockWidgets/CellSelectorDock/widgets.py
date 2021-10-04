@@ -305,7 +305,7 @@ class CellTableWidget(QTableWidget):
 
     def _showContextMenu(self, point: QtCore.QPoint):
         if len(self.selectedCellItems) > 0:
-            menu = QMenu("Context Menu")
+            menu = QMenu("Context Menu", parent=self)
             state = not self.selectedCellItems[0].isInvalid()
             stateString = "Disable Cell(s)" if state else "Enable Cell(s)"
             refState = not self.selectedCellItems[0].isReference()
@@ -496,7 +496,7 @@ class ReferencesTable(QTableWidget):
     def _showContextMenu(self, point: QtCore.QPoint):
         items = self.selectedItems()
         if len(items) > 0:
-            menu = QMenu("Context Menu")
+            menu = QMenu("Context Menu", parent=self)
             refStateString = "Unset as Reference"
             refAction = menu.addAction(refStateString)
             refAction.triggered.connect(

@@ -43,7 +43,7 @@ class ResultsTableControllerDock(ResultsTableController, QDockWidget):
         self._widget = QWidget()
         self._widget.setLayout(QGridLayout())
         self._table = ResultsTable()
-        checkBoxFrame = QFrame()
+        checkBoxFrame = QFrame(parent=self)
         checkBoxFrame.setLayout(QVBoxLayout())
         checkBoxFrame.layout().setContentsMargins(1, 1, 1, 1)
         checkBoxFrame.layout().setSpacing(1)

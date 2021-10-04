@@ -77,7 +77,7 @@ class PlottingDock(QDockWidget):
         self._buttonGroup.addButton(self._plotRButton)
         [i.setCheckable(True) for i in self._buttonGroup.buttons()]
         self._buttonGroup.buttons()[0].setChecked(True)
-        frame = QFrame()
+        frame = QFrame(parent=self)
         frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
         l = QVBoxLayout()
         [l.addWidget(i) for i in self._buttonGroup.buttons()]
