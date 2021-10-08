@@ -1,8 +1,7 @@
 import abc
 import os
 from PyQt5.QtCore import QObject
-from cachetools.decorators import cachedmethod
-from cachetools.lru import LRUCache
+from cachetools import cachedmethod, LRUCache
 from pwspy import dataTypes as pwsdt
 from pwspy_gui.PWSAnalysisApp.componentInterfaces import ROIManager
 
