@@ -180,10 +180,9 @@ class ERWorkFlow:
         matCombos = er.generateMaterialCombos(materials)
 
         print("Select an ROI")
-        verts = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select an ROI to analyze
-        mask = Roi.fromVerts(verts, cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
+        roi = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select an ROI to analyze
         cubeDict = cubes.groupby('setting').apply(lambda df: df.groupby('material')['cube'].apply(list).to_dict()).to_dict()  # Transform data frame to a dict of dicts of lists for input to `plot`
-        self.figs.extend(er.plotExtraReflection(cubeDict, theoryR, matCombos, numericalAperture, mask))
+        self.figs.extend(er.plotExtraReflection(cubeDict, theoryR, matCombos, numericalAperture, roi))
         if saveToPdf:
             with PdfPages(os.path.join(saveDir, f"fig_{datetime.strftime(datetime.now(), '%d-%m-%Y %HH%MM%SS')}.pdf")) as pp:
                 for i in plt.get_fignums():
