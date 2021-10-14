@@ -76,8 +76,8 @@ if __name__ == '__main__':
     theoryR = er.getTheoreticalReflectances(list(zip(*materials))[1], cubes['cube'][0].wavelengths, 0.52)
     matCombos = er.generateMaterialCombos(list(zip(*materials))[1], excludedCombos=exclude)
     if plotResults:
-        mask = random.choice(cubes['cube']).selectLassoRoi()
-        er.plotExtraReflection(cubes, theoryR, matCombos, 0.52, mask, plotReflectionImages=False)
+        roi = random.choice(cubes['cube']).selectLassoRoi()
+        er.plotExtraReflection(cubes, theoryR, matCombos, 0.52, roi, plotReflectionImages=False)
         with PdfPages(os.path.join(rootDir, "figs.pdf")) as pp:
             for i in plt.get_fignums():
                 f = plt.figure(i)

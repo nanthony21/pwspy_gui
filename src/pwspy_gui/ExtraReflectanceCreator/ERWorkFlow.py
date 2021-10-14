@@ -171,7 +171,7 @@ class ERWorkFlow:
     def loadCubes(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool):
         self.dataprovider.loadCubes(includeSettings, binning, parallelProcessing)
 
-    def plot(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float, saveToPdf: bool = False, saveDir: str = None):
+    def plot(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float):
         self.loadIfNeeded(includeSettings, binning, parallelProcessing)
         cubes = self.dataprovider.getCubes()
         materials = set(cubes['material'])
@@ -183,12 +183,6 @@ class ERWorkFlow:
         roi = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select an ROI to analyze
         cubeDict = cubes.groupby('setting').apply(lambda df: df.groupby('material')['cube'].apply(list).to_dict()).to_dict()  # Transform data frame to a dict of dicts of lists for input to `plot`
         self.figs.extend(er.plotExtraReflection(cubeDict, theoryR, matCombos, numericalAperture, roi))
-        if saveToPdf:
-            with PdfPages(os.path.join(saveDir, f"fig_{datetime.strftime(datetime.now(), '%d-%m-%Y %HH%MM%SS')}.pdf")) as pp:
-                for i in plt.get_fignums():
-                    f = plt.figure(i)
-                    f.set_size_inches(9, 9)
-                    pp.savefig(f)
 
     def save(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float, parentWidget: QWidget):
         self.loadIfNeeded(includeSettings, binning, parallelProcessing)
@@ -256,8 +250,7 @@ class ERWorkFlow:
         anis = []
         figs = []  # These lists just maintain references to matplotlib figures to keep them responsive.
         cubes = self.dataprovider.getCubes()
-        verts = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select a random of the selected cubes and use it to prompt the user for an analysis ROI
-        mask = Roi.fromVerts(verts=verts, dataShape=cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
+        roi = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select a random of the selected cubes and use it to prompt the user for an analysis ROI
         for mat in set(cubes['material']):
             c = cubes[cubes['material'] == mat]
             fig, ax = plt.subplots()
@@ -270,7 +263,7 @@ class ERWorkFlow:
             anims = []
             for i, row in c.iterrows():
                 im = row['cube']
-                spectra = im.getMeanSpectra(mask)[0]
+                spectra = im.getMeanSpectra(roi)[0]
                 ax.plot(im.wavelengths, spectra, label=row['setting'])
                 anims.append((ax2.imshow(im.data.mean(axis=2), animated=True,
                                          clim=[np.percentile(im.data, .5), np.percentile(im.data, 99.5)]),
