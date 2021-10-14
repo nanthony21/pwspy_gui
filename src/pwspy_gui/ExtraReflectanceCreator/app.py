@@ -65,9 +65,7 @@ class ERApp(QApplication):
                     self.window.checkedSettings,
                     self.window.binning,
                     self.window.parallelProcessing,
-                    self.window.numericalAperture.value(),
-                    saveToPdf=True,
-                    saveDir=self.figsDir)))
+                    self.window.numericalAperture.value())))
 
     def checkDataDir(self):
         self.homeDir = os.path.join(appPath, 'ExtraReflectanceCreatorData')
@@ -76,9 +74,6 @@ class ERApp(QApplication):
         self.gDriveDir = os.path.join(self.homeDir, 'GoogleDriveData')
         if not os.path.exists(self.gDriveDir):
             os.mkdir(self.gDriveDir)
-        self.figsDir = os.path.join(self.homeDir, 'Plots')
-        if not os.path.exists(self.figsDir):
-            os.mkdir(self.figsDir)
 
     def _cb(self, func):
         """Return a wrapped function with extra gui stuff."""
