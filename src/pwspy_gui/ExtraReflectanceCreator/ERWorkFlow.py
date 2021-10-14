@@ -250,8 +250,7 @@ class ERWorkFlow:
         anis = []
         figs = []  # These lists just maintain references to matplotlib figures to keep them responsive.
         cubes = self.dataprovider.getCubes()
-        verts = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select a random of the selected cubes and use it to prompt the user for an analysis ROI
-        mask = Roi.fromVerts(verts=verts, dataShape=cubes['cube'].sample(n=1).iloc[0].data.shape[:-1])
+        roi = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select a random of the selected cubes and use it to prompt the user for an analysis ROI
         for mat in set(cubes['material']):
             c = cubes[cubes['material'] == mat]
             fig, ax = plt.subplots()
@@ -264,7 +263,7 @@ class ERWorkFlow:
             anims = []
             for i, row in c.iterrows():
                 im = row['cube']
-                spectra = im.getMeanSpectra(mask)[0]
+                spectra = im.getMeanSpectra(roi)[0]
                 ax.plot(im.wavelengths, spectra, label=row['setting'])
                 anims.append((ax2.imshow(im.data.mean(axis=2), animated=True,
                                          clim=[np.percentile(im.data, .5), np.percentile(im.data, 99.5)]),
