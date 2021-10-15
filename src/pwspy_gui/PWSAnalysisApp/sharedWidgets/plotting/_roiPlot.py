@@ -345,7 +345,6 @@ class RoiPlot(QWidget):
 
         def done(vertsSet, handles):
             self._polyWidg.set_active(False)
-            self._polyWidg.set_visible(False)
             for param, verts in zip(selectedROIParams, vertsSet):
                 newRoi = pwsdt.Roi.fromVerts(np.array(verts),
                                              param.roiFile.getRoi().mask.shape)
@@ -380,7 +379,6 @@ class RoiPlot(QWidget):
             verts = verts[0]
             newRoi = pwsdt.Roi.fromVerts(np.array(verts), selectedROIParam.roiFile.getRoi().mask.shape)
             self._polyWidg.set_active(False)
-            self._polyWidg.set_visible(False)
             self._roiManager.updateRoi(selectedROIParam.roiFile, newRoi)
             self.roiModified.emit(self.metadata, selectedROIParam.roiFile)
 
