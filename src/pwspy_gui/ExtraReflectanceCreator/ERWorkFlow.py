@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
-
+import dataclasses
 import hashlib
 import os
 from datetime import datetime
@@ -39,11 +39,17 @@ import logging
 from mpl_qt_viz.visualizers import PlotNd, DockablePlotWindow
 import pathlib as pl
 
+DirectoryDataFrame = t_.NewType("DirectoryDataFrame", pd.DataFrame)  # Type alias representing the data frame returned by `scanDirectory`
+# Has columns "setting", "cube", "material"
 
+
+@dataclasses.dataclass
 class Directory:
-    def __init__(self, df: pd.DataFrame, camCorr: CameraCorrection):
-        self.dataframe = df
-        self.cameraCorrection = camCorr
+    """
+    Groups together relevant data for a given "System Directory" in the ERCreator raw data collection.
+    """
+    dataframe: DirectoryDataFrame
+    cameraCorrection: CameraCorrection
 
 
 def scanDirectory(directory: str) -> Directory:
@@ -75,20 +81,26 @@ def scanDirectory(directory: str) -> Directory:
         m = matMap[filelist[-2]]
         file = Acquisition(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the Acquisition class helps us abstract that out and be compatible with both.
         rows.append({'setting': s, 'material': m, 'cube': file})
-    df = pd.DataFrame(rows)
-    return Directory(df, cam)
+    df: DirectoryDataFrame = pd.DataFrame(rows)
+    return Directory(dataframe=df, cameraCorrection=cam)
 
 
 class DataProvider:
-    def __init__(self, df: pd.DataFrame, camCorr: CameraCorrection):
-        self._df = df
-        self._cameraCorrection = camCorr
-        self._cubes = None
+    """
+    This object manages caching data and processing new data when it needs to be loaded.
 
-    def getCubes(self):
+    Args:
+        directory: The Directory object providing a reference to the actual data.
+    """
+    def __init__(self, directory: Directory):
+        self._df = directory.dataframe
+        self._cameraCorrection = directory.cameraCorrection
+        self._cubes: pd.DataFrame = None
+
+    def getCubes(self) -> t_.Optional[pd.DataFrame]:
         return self._cubes
 
-    def getDataFrame(self):
+    def getDataFrame(self) -> pd.DataFrame:
         return self._df
 
     def loadCubes(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool):
