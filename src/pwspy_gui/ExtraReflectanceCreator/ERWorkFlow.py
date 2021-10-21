@@ -199,16 +199,19 @@ class ERWorkFlow:
             erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
             dock = DockablePlotWindow(title=setting)
             dock.addWidget(
-                PlotNd(erCube.data, title='Mean',
+                PlotNd(erCube.data,
+                       title='Mean',
                        indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
-                                erCube.wavelengths]),
+                                erCube.wavelengths],
+                       names=('y', 'x', 'lambda')),
                 title='Mean'
             )
             for matCombo, rExtraArr in rExtraDict.items():
                 dock.addWidget(
                     PlotNd(rExtraArr, title=matCombo,
                            indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
-                                    erCube.wavelengths]),
+                                    erCube.wavelengths],
+                           names=('y', 'x', 'lambda')),
                     title=str(matCombo)
                 )
             logger = logging.getLogger(__name__)
