@@ -186,7 +186,7 @@ class RoiPlot(QWidget):
             self.annot.xy = poly.get_path().vertices.mean(axis=0)  # Set the location to the center of the polygon.
             text = f"{roiFile.name}, {roiFile.number}"
             if self.metadata.pws:  # A day may come where fluorescence is not taken on the same camera as pws, in this case we will have multiple pixel sizes and ROI handling will need an update. for now just assume we'll use PWS pixel size
-                if self.metadata.pws.pixelSizeUm:  # For some systems (nanocytomics) this is None
+                if self.metadata.pws.pixelSizeUm:  # For some systems (NC) this is None
                     text += f"\n{self.metadata.pws.pixelSizeUm ** 2 * np.sum(roiFile.getRoi().mask):.2f} $μm^2$"
             self.annot.set_text(text)
             self.annot.get_bbox_patch().set_alpha(0.4)
