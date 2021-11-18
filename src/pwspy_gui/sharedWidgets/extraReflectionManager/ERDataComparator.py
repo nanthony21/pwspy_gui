@@ -22,16 +22,16 @@ from typing import Optional
 import pandas
 import typing
 if typing.TYPE_CHECKING:
-    from pwspy_gui.sharedWidgets.extraReflectionManager import ERManager, ERDownloader
-from pwspy_gui.sharedWidgets.extraReflectionManager._ERDataDirectory import ERDataDirectory, EROnlineDirectory
+    from pwspy_gui.sharedWidgets.extraReflectionManager import ERDownloader
+from pwspy_gui.sharedWidgets.extraReflectionManager._ERDataDirectory import ERDataDirectory, EROnlineDirectory, ERAbstractDirectory
 from enum import Enum
 
 
 class ERDataComparator:
     """A class to compare the local directory to the online directory.
     Args:
-        downloader (Optional[ERDownloader]): Handles communication with GoogleDrive, if operating in offline mode this should be None
-        directory (str): The file path where the files are stored locally.
+        online: Handles communication with GoogleDrive, if operating in offline mode this should be None
+        directory: The file path where the files are stored locally.
     """
 
     class ComparisonStatus(Enum):
@@ -40,9 +40,9 @@ class ERDataComparator:
         Md5Mismatch = 'MD5 Mismatch'
         Match = "Match"  # This is what we hope to see.
 
-    def __init__(self, downloader: Optional[ERDownloader], directory: str):
-        self.local: ERDataDirectory = ERDataDirectory(directory)
-        self.online: Optional[EROnlineDirectory] = None if downloader is None else EROnlineDirectory(downloader)
+    def __init__(self, online: EROnlineDirectory, directory: ERDataDirectory):
+        self.local: ERDataDirectory = directory
+        self.online: EROnlineDirectory = online
 
     def updateIndexes(self):
         self.local.updateIndex()

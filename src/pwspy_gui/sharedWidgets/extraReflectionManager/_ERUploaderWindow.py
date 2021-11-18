@@ -45,6 +45,7 @@ class ERUploaderWindow(QDialog):
     """This window provides the user a visual picture of the local and online status of the Extra Reflectance calibration file repository. It also allows uploading
     of files that are present locally but not on the server. It does not have good handling of edge cases, e.g. online server in inconsistent state."""
     def __init__(self, manager: ERManager, parent: Optional[QWidget] = None):
+        self._dataComparator = ERDataComparator(manager.onlineDirectory, manager.localDirectory)
         self._manager = manager
         self._selectedId: str = None
         super().__init__(parent)
@@ -52,7 +53,7 @@ class ERUploaderWindow(QDialog):
         self.setWindowTitle("Extra Reflectance File Manager")
         self.setLayout(QVBoxLayout())
         self.table = QTableView(self)
-        self.fileStatus = self._manager.dataComparator.compare()
+        self.fileStatus = self._dataComparator.compare()
         self.table.setModel(PandasModel(self.fileStatus))
         self.table.setSelectionMode(QTableView.SingleSelection)
         self.table.setSelectionBehavior(QTableView.SelectRows)
@@ -84,7 +85,7 @@ class ERUploaderWindow(QDialog):
 
     def plotData(self, index: QModelIndex):
         idTag = self.fileStatus.iloc[index.row()]['idTag']
-        md = self._manager.getMetadataFromId(idTag)
+        md = self._dataComparator.local.getMetadataFromId(idTag)
         erCube = ExtraReflectanceCube.fromMetadata(md)
         self.plotHandle = PlotNd(erCube.data)
 
@@ -96,7 +97,7 @@ class ERUploaderWindow(QDialog):
         displayAction = QAction("Display Info")
         displayAction.triggered.connect(lambda: self.displayInfo(index))
         menu.addAction(displayAction)
-        if row['Local Status'] == self._manager.dataComparator.local.DataStatus.found.value:
+        if row['Local Status'] == self._dataComparator.local.DataStatus.found.value:
             plotAction = QAction("Plot Local Data")
             plotAction.triggered.connect(lambda: self.plotData(index))
             menu.addAction(plotAction)
@@ -111,7 +112,7 @@ class ERUploaderWindow(QDialog):
             uploadableRows = (status['Index Comparison'] == ERDataComparator.ComparisonStatus.LocalOnly.value) | (status['Online Status'] == ERDataDirectory.DataStatus.missing.value)
             if np.any(uploadableRows):  # There is something to upload
                 for i, row, in status.loc[uploadableRows].iterrows():
-                    fileName = [i.fileName for i in self._manager.dataComparator.local.index.cubes if i.idTag == row['idTag']][0]
+                    fileName = [i.fileName for i in self._dataComparator.local.index.cubes if i.idTag == row['idTag']][0]
                     self._manager.upload(fileName)
                 self._manager.upload('index.json')
             self.refresh()
@@ -122,14 +123,14 @@ class ERUploaderWindow(QDialog):
 
     def refresh(self):
         """Scans local and online files to refresh the display."""
-        self._manager.dataComparator.updateIndexes()
-        self.fileStatus = self._manager.dataComparator.compare()
+        self._dataComparator.updateIndexes()
+        self.fileStatus = self._dataComparator.compare()
         self.table.setModel(PandasModel(self.fileStatus))
 
     def _updateIndexFile(self):
-        self._manager.dataComparator.online.updateIndex()
-        index = ERIndex.merge(self._manager.dataComparator.local.index, self._manager.dataComparator.online.index)
-        self._manager.dataComparator.local.saveNewIndex(index)
+        self._dataComparator.online.updateIndex()
+        index = ERIndex.merge(self._dataComparator.local.index, self._dataComparator.online.index)
+        self._dataComparator.local.saveNewIndex(index)
         self.refresh()
 
 

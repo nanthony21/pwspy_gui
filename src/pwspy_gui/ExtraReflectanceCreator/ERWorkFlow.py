@@ -299,5 +299,5 @@ class ERWorkFlow:
         """
         self.currDir = directory
         directory = self.fileStruct[directory]
-        self.dataprovider = DataProvider(directory.dataframe, directory.cameraCorrection)
+        self.dataprovider = DataProvider(directory)
         return set(self.dataprovider.getDataFrame()['setting'])
