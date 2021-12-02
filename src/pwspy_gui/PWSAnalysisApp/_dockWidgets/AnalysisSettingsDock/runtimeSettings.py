@@ -88,8 +88,8 @@ class DynamicsRuntimeAnalysisSettings(AbstractRuntimeAnalysisSettings):  # Inher
 class PWSRuntimeAnalysisSettings(AbstractRuntimeAnalysisSettings):  # Inherit docstring
     settings: PWSAnalysisSettings
     extraReflectanceMetadata: typing.Optional[pwsdt.ERMetaData]
-    referenceMetadata: pwsdt.ICMetaData
-    cellMetadata: typing.List[pwsdt.ICMetaData]
+    referenceMetadata: pwsdt.PwsMetaData
+    cellMetadata: typing.List[pwsdt.PwsMetaData]
     analysisName: str
 
     def getSaveableSettings(self) -> PWSAnalysisSettings:
@@ -98,10 +98,10 @@ class PWSRuntimeAnalysisSettings(AbstractRuntimeAnalysisSettings):  # Inherit do
     def getAnalysisName(self) -> str:
         return self.analysisName
 
-    def getReferenceMetadata(self) -> pwsdt.ICMetaData:
+    def getReferenceMetadata(self) -> pwsdt.PwsMetaData:
         return self.referenceMetadata
 
-    def getCellMetadatas(self) -> typing.Sequence[pwsdt.ICMetaData]:
+    def getCellMetadatas(self) -> typing.Sequence[pwsdt.PwsMetaData]:
         return self.cellMetadata
 
     def getExtraReflectanceMetadata(self) -> pwsdt.ERMetaData:

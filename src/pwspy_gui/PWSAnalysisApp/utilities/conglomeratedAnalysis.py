@@ -20,7 +20,7 @@ from typing import List, Tuple, Optional
 from pwspy.analysis import warnings
 from pwspy.analysis.dynamics import DynamicsAnalysisResults
 from pwspy.analysis.pws import PWSAnalysisResults
-from pwspy.dataTypes import Roi
+from pwspy.dataTypes import RoiFile
 from pwspy.analysis.compilation import (DynamicsRoiCompiler, DynamicsCompilerSettings, DynamicsRoiCompilationResults,
                                         PWSRoiCompiler, PWSCompilerSettings, PWSRoiCompilationResults,
                                         GenericRoiCompiler, GenericCompilerSettings, GenericRoiCompilationResults)
@@ -57,11 +57,11 @@ class ConglomerateCompiler:
 
     def run(self, results: ConglomerateAnalysisResults, roiFile: RoiFile) -> Tuple[ConglomerateCompilerResults, List[warnings.AnalysisWarning]]:
         if results.pws is not None:
-            pwsResults, pwsWarnings = self.pws.run(results.pws, roiFile)
+            pwsResults, pwsWarnings = self.pws.run(results.pws, roiFile.getRoi())
         else:
             pwsResults, pwsWarnings = None, []
         if results.dyn is not None:
-            dynResults, dynWarnings = self.dyn.run(results.dyn, roiFile)
+            dynResults, dynWarnings = self.dyn.run(results.dyn, roiFile.getRoi())
         else:
             dynResults, dynWarnings = None, []
         genResults = self.generic.run(roiFile)

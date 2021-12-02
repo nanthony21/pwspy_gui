@@ -24,7 +24,7 @@ import typing as t_
 from PyQt5.QtWidgets import QWidget
 from matplotlib import animation
 
-from pwspy.dataTypes import CameraCorrection, Acquisition, ICMetaData, PwsCube
+from pwspy.dataTypes import CameraCorrection, Acquisition, PwsMetaData, PwsCube
 from pwspy_gui.ExtraReflectanceCreator.widgets.dialog import IndexInfoForm
 from pwspy.dataTypes import Roi
 from pwspy import dateTimeFormat
@@ -108,7 +108,7 @@ class DataProvider:
         if binning is None:
             args = {'correction': None, 'binning': None}
             for cube in df['cube']:
-                md = ICMetaData.loadAny(cube)
+                md = PwsMetaData.loadAny(cube)
                 if md.binning is None:
                     raise Exception("No binning metadata found. Please specify a binning setting.")
                 elif md.cameraCorrection is None:
@@ -194,7 +194,7 @@ class ERWorkFlow:
         print("Select an ROI")
         roi = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select an ROI to analyze
         cubeDict = cubes.groupby('setting').apply(lambda df: df.groupby('material')['cube'].apply(list).to_dict()).to_dict()  # Transform data frame to a dict of dicts of lists for input to `plot`
-        self.figs.extend(er.plotExtraReflection(cubeDict, theoryR, matCombos, numericalAperture, roi))
+        self.figs.extend(er.plotExtraReflection(cubeDict, theoryR, matCombos, roi))
 
     def save(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float, parentWidget: QWidget):
         self.loadIfNeeded(includeSettings, binning, parallelProcessing)

@@ -22,17 +22,17 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import QDialog, QFileDialog, QWidget, QLineEdit, QPushButton, QLabel, QGridLayout, QMessageBox
 
 from pwspy_gui import resources
-from pwspy.dataTypes import ICMetaData
+from pwspy.dataTypes import PwsMetaData
 from typing import List
 import os
 import random
 
 
 class Blinder:
-    """A class that, given a list of ICMetadata and the root directory that their files are under, will create randomly
+    """A class that, given a list of PwsMetaData and the root directory that their files are under, will create randomly
     numbered symlinks in `outDir` and an index that can be used to trace back to the original. Useful for creating
     blinded experiments."""
-    def __init__(self, cells: List[ICMetaData], homeDir: str, outDir: str):
+    def __init__(self, cells: List[PwsMetaData], homeDir: str, outDir: str):
         indexPath = os.path.join(homeDir, 'blindedIndex.json')
         if os.path.exists(indexPath):
             raise ValueError(f"A `blindedIndex.json` file already exists in {homeDir}.")
@@ -58,7 +58,7 @@ class Blinder:
 class BlinderDialog(QDialog):
     """This dialog asks the user for the information that is needed in order to perform a blinding with the `Blinder`
     class."""
-    def __init__(self, parent: QWidget, homeDir: str, cells: List[ICMetaData]):
+    def __init__(self, parent: QWidget, homeDir: str, cells: List[PwsMetaData]):
         self.parent = parent
         self.homeDir = homeDir
         self.cells = cells
