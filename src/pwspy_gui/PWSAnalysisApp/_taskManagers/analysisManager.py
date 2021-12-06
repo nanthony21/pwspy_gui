@@ -34,7 +34,7 @@ from pwspy.analysis.dynamics import DynamicsAnalysis
 from pwspy.analysis.pws import PWSAnalysis
 from pwspy_gui.PWSAnalysisApp._dockWidgets.AnalysisSettingsDock.runtimeSettings import PWSRuntimeAnalysisSettings, DynamicsRuntimeAnalysisSettings
 from pwspy.analysis.warnings import AnalysisWarning
-from pwspy.dataTypes import ICRawBase, ICMetaData, DynMetaData
+from pwspy.dataTypes import ICRawBase, PwsMetaData, DynMetaData
 from pwspy.utility.fileIO import loadAndProcess
 if typing.TYPE_CHECKING:
     from pwspy_gui.PWSAnalysisApp.App import PWSApp
@@ -90,7 +90,7 @@ class AnalysisManager(QtCore.QObject):
         if correctionsOk:
             if isinstance(anSettings, PWSRuntimeAnalysisSettings):
                 AnalysisClass = PWSAnalysis
-                refMeta: ICMetaData
+                refMeta: PwsMetaData
             elif isinstance(anSettings, DynamicsRuntimeAnalysisSettings):
                 AnalysisClass = DynamicsAnalysis
                 refMeta: DynMetaData
@@ -180,7 +180,7 @@ class AnalysisManager(QtCore.QObject):
         def run(self):
             try:
                 self.warnings = loadAndProcess(self.cellMetas, processorFunc=self._process, initArgs=[self.analysis, self.anName, self.cameraCorrection, self.userSpecifiedBinning],
-                                     parallel=self.parallel, initializer=self._initializer) # Returns a list of Tuples, each tuple containing a list of warnings and the ICmetadata to go with it.
+                                     parallel=self.parallel, initializer=self._initializer) # Returns a list of Tuples, each tuple containing a list of warnings and the PwsMetaData to go with it.
             except Exception as e:
                 import traceback
                 trace = traceback.format_exc()

@@ -66,6 +66,15 @@ class ERDataDirectory(ERAbstractDirectory):
         self._directory = directory
         super().__init__()
 
+    def getMetadataFromId(self, idTag: str) -> ERMetaData:
+        """Given the unique idTag string for an ExtraReflectanceCube this will search the index.json and return the
+        ERMetaData file. If it cannot be found then an `IndexError will be raised."""
+        try:
+            match = [item for item in self.index.cubes if item.idTag == idTag][0]
+        except IndexError:
+            raise IndexError(f"An ExtraReflectanceCube with idTag {idTag} was not found in the index.json file at {self._directory}.")
+        return ERMetaData.fromHdfFile(self._directory, match.name)
+
     def updateIndex(self):
         indexPath = os.path.join(self._directory, ERIndex.FILENAME)
         if not os.path.exists(indexPath):
@@ -213,4 +222,5 @@ class EROnlineDirectory(ERAbstractDirectory):
             else:
                 raise Exception("Programming error.")  # This shouldn't be possible
             d[i] = {'idTag': [ind.idTag for ind in jsonIndex.cubes if ind.fileName == fileName][0], 'status': status}
+
         return d

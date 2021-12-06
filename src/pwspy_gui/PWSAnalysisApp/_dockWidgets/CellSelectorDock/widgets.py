@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import QPushButton, QTableWidgetItem, QTableWidget, QAbstra
     QInputDialog, QHeaderView
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets import ScrollableMessageBox
-from pwspy.dataTypes import Acquisition, ICMetaData, DynMetaData
+from pwspy.dataTypes import Acquisition, PwsMetaData, DynMetaData
 
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.dictDisplayTree import DictDisplayTreeDialog
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.tables import NumberTableWidgetItem
@@ -349,7 +349,7 @@ class CellTableWidget(QTableWidget):
         else:
             ret = ScrollableMessageBox.question(self, "Delete Analysis?",
                 f"Are you sure you want to delete {anName} from:"
-                f"\nPWS: {', '.join([os.path.split(i.acquisitionDirectory.filePath)[-1] for i in deletableCells if isinstance(i, ICMetaData)])}"
+                f"\nPWS: {', '.join([os.path.split(i.acquisitionDirectory.filePath)[-1] for i in deletableCells if isinstance(i, PwsMetaData)])}"
                 f"\nDynamics: {', '.join([os.path.split(i.acquisitionDirectory.filePath)[-1] for i in deletableCells if isinstance(i, DynMetaData)])}")
             if ret == QMessageBox.Yes:
                 [i.removeAnalysis(anName) for i in deletableCells]
@@ -485,7 +485,7 @@ class ReferencesTable(QTableWidget):
 
     @property
     def selectedReferenceMeta(self) -> t_.Optional[Acquisition]:
-        """Returns the ICMetadata that have been selected. Return None if nothing is selected."""
+        """Returns the PwsMetaData that have been selected. Return None if nothing is selected."""
         items: List[ReferencesTableItem] = self.selectedItems()
         assert len(items) <= 1
         if len(items) == 0:

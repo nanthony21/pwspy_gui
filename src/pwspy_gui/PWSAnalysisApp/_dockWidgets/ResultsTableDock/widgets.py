@@ -83,6 +83,8 @@ class ResultsTableItem:
         fig, ax = plt.subplots()
         ax.plot(self.results.pws.opdIndex, self.results.pws.opd)
         fig.suptitle(f"{self.cellPathLabel.text()}/Cell{self.cellNumLabel.text()}")
+        ax.set_ylabel("Amplitude")
+        ax.set_xlabel("OPD (um)")
         fig.show()
 
 

@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with PWSpy.  If not, see <https://www.gnu.org/licenses/>.
-
+import dataclasses
 import hashlib
 import os
 from datetime import datetime
@@ -24,7 +24,7 @@ import typing as t_
 from PyQt5.QtWidgets import QWidget
 from matplotlib import animation
 
-from pwspy.dataTypes import CameraCorrection, Acquisition, ICMetaData, PwsCube
+from pwspy.dataTypes import CameraCorrection, Acquisition, PwsMetaData, PwsCube
 from pwspy_gui.ExtraReflectanceCreator.widgets.dialog import IndexInfoForm
 from pwspy.dataTypes import Roi
 from pwspy import dateTimeFormat
@@ -39,11 +39,17 @@ import logging
 from mpl_qt_viz.visualizers import PlotNd, DockablePlotWindow
 import pathlib as pl
 
+DirectoryDataFrame = t_.NewType("DirectoryDataFrame", pd.DataFrame)  # Type alias representing the data frame returned by `scanDirectory`
+# Has columns "setting", "cube", "material"
 
+
+@dataclasses.dataclass
 class Directory:
-    def __init__(self, df: pd.DataFrame, camCorr: CameraCorrection):
-        self.dataframe = df
-        self.cameraCorrection = camCorr
+    """
+    Groups together relevant data for a given "System Directory" in the ERCreator raw data collection.
+    """
+    dataframe: DirectoryDataFrame
+    cameraCorrection: CameraCorrection
 
 
 def scanDirectory(directory: str) -> Directory:
@@ -75,20 +81,26 @@ def scanDirectory(directory: str) -> Directory:
         m = matMap[filelist[-2]]
         file = Acquisition(file).pws.filePath  # old pws is saved directly in the "Cell{X}" folder. new pws is saved in "Cell{x}/PWS" the Acquisition class helps us abstract that out and be compatible with both.
         rows.append({'setting': s, 'material': m, 'cube': file})
-    df = pd.DataFrame(rows)
-    return Directory(df, cam)
+    df: DirectoryDataFrame = pd.DataFrame(rows)
+    return Directory(dataframe=df, cameraCorrection=cam)
 
 
 class DataProvider:
-    def __init__(self, df: pd.DataFrame, camCorr: CameraCorrection):
-        self._df = df
-        self._cameraCorrection = camCorr
-        self._cubes = None
+    """
+    This object manages caching data and processing new data when it needs to be loaded.
 
-    def getCubes(self):
+    Args:
+        directory: The Directory object providing a reference to the actual data.
+    """
+    def __init__(self, directory: Directory):
+        self._df = directory.dataframe
+        self._cameraCorrection = directory.cameraCorrection
+        self._cubes: pd.DataFrame = None
+
+    def getCubes(self) -> t_.Optional[pd.DataFrame]:
         return self._cubes
 
-    def getDataFrame(self):
+    def getDataFrame(self) -> pd.DataFrame:
         return self._df
 
     def loadCubes(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool):
@@ -96,7 +108,7 @@ class DataProvider:
         if binning is None:
             args = {'correction': None, 'binning': None}
             for cube in df['cube']:
-                md = ICMetaData.loadAny(cube)
+                md = PwsMetaData.loadAny(cube)
                 if md.binning is None:
                     raise Exception("No binning metadata found. Please specify a binning setting.")
                 elif md.cameraCorrection is None:
@@ -182,7 +194,7 @@ class ERWorkFlow:
         print("Select an ROI")
         roi = cubes['cube'].sample(n=1).iloc[0].selectLassoROI()  # Select an ROI to analyze
         cubeDict = cubes.groupby('setting').apply(lambda df: df.groupby('material')['cube'].apply(list).to_dict()).to_dict()  # Transform data frame to a dict of dicts of lists for input to `plot`
-        self.figs.extend(er.plotExtraReflection(cubeDict, theoryR, matCombos, numericalAperture, roi))
+        self.figs.extend(er.plotExtraReflection(cubeDict, theoryR, matCombos, roi))
 
     def save(self, includeSettings: t_.List[str], binning: int, parallelProcessing: bool, numericalAperture: float, parentWidget: QWidget):
         self.loadIfNeeded(includeSettings, binning, parallelProcessing)
@@ -199,16 +211,19 @@ class ERWorkFlow:
             erCube, rExtraDict = er.generateRExtraCubes(combos, theoryR, numericalAperture)
             dock = DockablePlotWindow(title=setting)
             dock.addWidget(
-                PlotNd(erCube.data, title='Mean',
+                PlotNd(erCube.data,
+                       title='Mean',
                        indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
-                                erCube.wavelengths]),
+                                erCube.wavelengths],
+                       names=('y', 'x', 'lambda')),
                 title='Mean'
             )
             for matCombo, rExtraArr in rExtraDict.items():
                 dock.addWidget(
                     PlotNd(rExtraArr, title=matCombo,
                            indices=[range(erCube.data.shape[0]), range(erCube.data.shape[1]),
-                                    erCube.wavelengths]),
+                                    erCube.wavelengths],
+                           names=('y', 'x', 'lambda')),
                     title=str(matCombo)
                 )
             logger = logging.getLogger(__name__)
@@ -284,5 +299,5 @@ class ERWorkFlow:
         """
         self.currDir = directory
         directory = self.fileStruct[directory]
-        self.dataprovider = DataProvider(directory.dataframe, directory.cameraCorrection)
+        self.dataprovider = DataProvider(directory)
         return set(self.dataprovider.getDataFrame()['setting'])

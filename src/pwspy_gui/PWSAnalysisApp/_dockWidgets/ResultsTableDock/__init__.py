@@ -30,7 +30,7 @@ from ..._taskManagers.compilationManager import CompilationManager
 from ...componentInterfaces import ResultsTableController
 
 if typing.TYPE_CHECKING:
-    from pwspy.dataTypes import Acquisition, ICMetaData
+    from pwspy.dataTypes import Acquisition, PwsMetaData
     from pwspy.analysis.pws import PWSAnalysisSettings
     from pwspy.analysis.warnings import AnalysisWarning
 
@@ -135,7 +135,7 @@ class ResultsTableControllerDock(ResultsTableController, QDockWidget):
 
 
 class CompilationSummaryDisplay(QDialog):
-    def __init__(self, parent: typing.Optional[QWidget], warnings: typing.List[typing.Tuple[ICMetaData, typing.List[typing.Tuple[PWSRoiCompilationResults, typing.Optional[typing.List[AnalysisWarning]]]]]], analysisName: str = '', analysisSettings: PWSAnalysisSettings = None):
+    def __init__(self, parent: typing.Optional[QWidget], warnings: typing.List[typing.Tuple[PwsMetaData, typing.List[typing.Tuple[PWSRoiCompilationResults, typing.Optional[typing.List[AnalysisWarning]]]]]], analysisName: str = '', analysisSettings: PWSAnalysisSettings = None):
         super().__init__(parent=parent)
         self.setWindowTitle("Compilation Summary")
         layout = QVBoxLayout()
@@ -146,7 +146,7 @@ class CompilationSummaryDisplay(QDialog):
         self._addWarnings(warnings)
         self.show()
 
-    def _addWarnings(self, warnings: typing.List[typing.Tuple[ICMetaData, typing.List[typing.Tuple[ConglomerateCompilerResults, typing.Optional[typing.List[AnalysisWarning]]]]]]):
+    def _addWarnings(self, warnings: typing.List[typing.Tuple[PwsMetaData, typing.List[typing.Tuple[ConglomerateCompilerResults, typing.Optional[typing.List[AnalysisWarning]]]]]]):
         for meta, roiList in warnings:
             item = QTreeWidgetItem(self.warningTree)
             item.setText(0, meta.filePath)

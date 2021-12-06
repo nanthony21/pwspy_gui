@@ -36,7 +36,7 @@ from pwspy_gui.PWSAnalysisApp._dockWidgets.ResultsTableDock import ConglomerateC
 
 if typing.TYPE_CHECKING:
     from typing import Optional, List, Tuple
-    from pwspy.dataTypes import ICMetaData
+    from pwspy.dataTypes import PwsMetaData
     from pwspy.analysis.compilation import PWSRoiCompilationResults
     from pwspy.analysis.pws import PWSAnalysisSettings
     from pwspy.analysis.warnings import AnalysisWarning
@@ -84,7 +84,7 @@ class WorkingDirDialog(QDialog):
 
 
 class AnalysisSummaryDisplay(QDialog):
-    def __init__(self, parent: Optional[QWidget], warnings: List[Tuple[List[AnalysisWarning], ICMetaData]], analysisName: str = '', analysisSettings: PWSAnalysisSettings = None):
+    def __init__(self, parent: Optional[QWidget], warnings: List[Tuple[List[AnalysisWarning], PwsMetaData]], analysisName: str = '', analysisSettings: PWSAnalysisSettings = None):
         super().__init__(parent=parent)
         self.analysisName = analysisName
         self.analysisSettings = analysisSettings
@@ -100,7 +100,7 @@ class AnalysisSummaryDisplay(QDialog):
         self.setWindowTitle(f"Analysis Summary: {analysisName}")
         self.show()
 
-    def _addWarnings(self, warnings: List[Tuple[List[AnalysisWarning],ICMetaData]]):
+    def _addWarnings(self, warnings: List[Tuple[List[AnalysisWarning],PwsMetaData]]):
          for cellWarns, cell in warnings:
             item = QTreeWidgetItem(self.warnList)
             item.setText(0, cell.filePath)

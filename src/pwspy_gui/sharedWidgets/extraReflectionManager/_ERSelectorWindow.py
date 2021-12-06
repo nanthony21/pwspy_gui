@@ -110,9 +110,9 @@ class ERSelectorWindow(QDialog):
     def _initialize(self):
         self._items: List[ERTreeWidgetItem] = []
         self.tree.clear()
-        self._manager.dataComparator.local.updateIndex()
-        self.fileStatus = self._manager.dataComparator.local.getFileStatus(skipMD5=True)  # Skipping the md5 hash check should speed things up here.
-        for item in self._manager.dataComparator.local.index.cubes:
+        self._manager.localDirectory.updateIndex()
+        self.fileStatus = self._manager.localDirectory.getFileStatus(skipMD5=True)  # Skipping the md5 hash check should speed things up here.
+        for item in self._manager.localDirectory.index.cubes:
             self._addItem(item)
         # Sort items by date
         for item in [self.tree.invisibleRootItem().child(i) for i in range(self.tree.invisibleRootItem().childCount())]:
@@ -123,7 +123,7 @@ class ERSelectorWindow(QDialog):
 
     def _addItem(self, item: ERIndexCube):
         treeItem = ERTreeWidgetItem(fileName=item.fileName, description=item.description, idTag=item.idTag, name=item.name,
-                                    downloaded=self.fileStatus[self.fileStatus['idTag'] == item.idTag].iloc[0]['Local Status'] == self._manager.dataComparator.local.DataStatus.found.value)
+                                    downloaded=self.fileStatus[self.fileStatus['idTag'] == item.idTag].iloc[0]['Local Status'] == self._manager.localDirectory.DataStatus.found.value)
         self._items.append(treeItem)
         _ = self.tree.invisibleRootItem()
         if treeItem.configurationName not in [_.child(i).text(0) for i in range(_.childCount())]:

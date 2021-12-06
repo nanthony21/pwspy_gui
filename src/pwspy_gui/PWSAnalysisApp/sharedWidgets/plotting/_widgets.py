@@ -101,7 +101,7 @@ class AnalysisPlotter:
     def changeData(self, field: _PlotFields):
         assert isinstance(field, AnalysisPlotter.PlotFields)
         self._analysisField = field
-        if field is _PlotFields.Thumbnail:  # Load the thumbnail from the ICMetadata object
+        if field is _PlotFields.Thumbnail:  # Load the thumbnail from the PwsMetaData object
             self._data = self._acq.getThumbnail()
         elif field in _FluorescencePlotFields:  # Open the fluorescence image.
             idx = _FluorescencePlotFields.index(field)  # Get the number for the fluorescence image that has been selected.
