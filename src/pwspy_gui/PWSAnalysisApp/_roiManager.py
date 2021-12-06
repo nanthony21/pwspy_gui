@@ -26,7 +26,26 @@ class _DefaultROIManager(ROIManager, QObject):
         self.roiUpdated.emit(roiFile)
 
     def createRoi(self, acq: pwsdt.Acquisition, roi: pwsdt.Roi, roiName: str, roiNumber: int, overwrite: bool = False) -> pwsdt.RoiFile:
-        roiFile = acq.saveRoi(roiName, roiNumber, roi, overwrite=overwrite)
+        """
+
+        Args:
+            acq: The acquisition to save the ROI to
+            roi: The ROI to save.
+            roiName: The name to save the ROI as.
+            roiNumber: The number to save the ROI as.
+            overwrite: Whether to overwrite existing ROIs with conflicting name/number combo.
+
+        Returns:
+            A reference to the created ROIFile
+
+        Raises:
+            OSError: If `overwrite` is false and an ROIFile for this name and number already exists.
+
+        """
+        try:
+            roiFile = acq.saveRoi(roiName, roiNumber, roi, overwrite=overwrite)
+        except OSError as e:
+            raise e
         self._cache[self._getCacheKey(roiFile)] = roiFile
         self.roiCreated.emit(roiFile, overwrite)
         return roiFile

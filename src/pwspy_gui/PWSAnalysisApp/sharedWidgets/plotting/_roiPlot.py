@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import pickle
 import re
-import typing
+import typing as t_
 from dataclasses import dataclass
 from PyQt5.QtCore import pyqtSignal, Qt, QMimeData
 from shapely.geometry import Polygon as shapelyPolygon
@@ -27,7 +27,8 @@ from matplotlib.backend_bases import KeyEvent, MouseEvent
 from matplotlib.patches import PathPatch
 import numpy as np
 from PyQt5.QtGui import QCursor, QValidator
-from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout, QApplication, QMessageBox
+from PyQt5.QtWidgets import QMenu, QAction, QComboBox, QLabel, QPushButton, QHBoxLayout, QWidget, QVBoxLayout, QApplication, QMessageBox, QInputDialog, QDialog, \
+    QGridLayout, QTextEdit, QSpinBox, QLineEdit
 from PyQt5 import QtCore
 from pwspy_gui.PWSAnalysisApp.sharedWidgets.plotting._bigPlot import BigPlot
 from mpl_qt_viz.roiSelection import PolygonModifier, MovingModifier
@@ -60,7 +61,7 @@ class RoiPlot(QWidget):
         self.im = self._plotWidget.im
         self.ax = self._plotWidget.ax
 
-        self.rois: typing.List[RoiParams] = []  # This list holds information about the ROIs that are currently displayed.
+        self.rois: t_.List[RoiParams] = []  # This list holds information about the ROIs that are currently displayed.
 
         self.roiFilter = QComboBox(self)
         self.roiFilter.setEditable(True)
@@ -216,6 +217,11 @@ class RoiPlot(QWidget):
             self._editFunc(selected[0])
         elif key == 's':  # Shift/rotate
             self._moveRoisFunc()
+        elif key == 'r': # Rename
+            sel = [param for param in self.rois if param.selected]
+            if len(sel) != 1:
+                return  # Only works for one selection
+            self._renameFunc(sel[0])
 
     def _keyReleaseCallback(self, event: KeyEvent):
         pass
@@ -309,14 +315,21 @@ class RoiPlot(QWidget):
                 QMessageBox.information(self, "Nope", 'Pasting Failed. See the log.')
                 logging.getLogger(__name__).exception(e)
 
+
         popMenu = QMenu(self)
         deleteAction = popMenu.addAction("Delete Selected ROIs", deleteFunc)
         moveAction = popMenu.addAction("(S)hift/Rotate Selected ROIs", self._moveRoisFunc)
         selectAllAction = popMenu.addAction("De/Select (A)ll", self._selectAllFunc)
         copyAction = popMenu.addAction("Copy ROIs", copyFunc)
         pasteAction = popMenu.addAction("Paste ROIs", pasteFunc)
+        # Actions that require that a ROI was clicked on.
+        popMenu.addSeparator()
+        modifyAction = popMenu.addAction("(M)odify ROI", lambda sel=selectedROIParam: self._editFunc(sel))
+        renameAction = popMenu.addAction("(R)ename ROI", lambda sel=selectedROIParam: self._renameFunc(sel))
 
-        if not any([roiParam.selected for roiParam in self.rois]):  # If no rois are selected then some actions can't be performed
+        selectedRoiParams = [r for r in self.rois if r.selected]
+
+        if not len(selectedRoiParams) == 0:  # If no rois are selected then some actions can't be performed
             deleteAction.setEnabled(False)
             moveAction.setEnabled(False)
             copyAction.setEnabled(False)
@@ -324,10 +337,12 @@ class RoiPlot(QWidget):
         moveAction.setToolTip(MovingModifier.getHelpText())
         popMenu.setToolTipsVisible(True)
 
-        if selectedROIParam is not None:
-            # Actions that require that a ROI was clicked on.
-            popMenu.addSeparator()
-            popMenu.addAction("(M)odify", lambda sel=selectedROIParam: self._editFunc(sel))
+        if len(selectedRoiParams) == 1:  # Only allowed for a single ROI selection
+            modifyAction.setEnabled(True)
+            renameAction.setEnabled(True)
+        else:
+            modifyAction.setEnabled(False)
+            renameAction.setEnabled(False)
 
         cursor = QCursor()
         popMenu.popup(cursor.pos())
@@ -392,6 +407,21 @@ class RoiPlot(QWidget):
         self.enableHoverAnnotation(False)
         self._polyWidg.initialize([handles])
 
+    def _renameFunc(self, selected: RoiParams):
+        dlg = RenameDialog(self, selected.roiFile.name, selected.roiFile.number)
+        result = dlg.exec()
+        if result != QDialog.Accepted:
+            return
+        name, num = dlg.getValues()
+
+        roi = selected.roiFile.getRoi()
+        try:
+            self._roiManager.createRoi(acq=self.metadata, roi=roi, roiName=name, roiNumber=num, overwrite=False)
+        except OSError as e:
+            QMessageBox.information(self, "Error", "Failed to rename the ROI. Does an ROI with this name and number already exist?")
+            return  # Don't remove the existing roi if we had an issue.
+        self._roiManager.removeRoi(selected.roiFile)
+
 
 class WhiteSpaceValidator(QValidator):
     stateChanged = QtCore.pyqtSignal(QValidator.State)
@@ -410,3 +440,37 @@ class WhiteSpaceValidator(QValidator):
     def fixup(self, a0: str) -> str:
         return a0.strip()
 
+
+class RenameDialog(QDialog):
+    def __init__(self, parent: QWidget, initName: str, initNum: int):
+        super().__init__(parent=parent)
+
+        self._nameField = QLineEdit(initName, self)
+        self._numberField = QSpinBox(self)
+        self._numberField.setRange(0, 1000)
+        self._numberField.setValue(initNum)
+
+        self._okButton = QPushButton("OK", self)
+        self._cancelButton = QPushButton("Cancel", self)
+        self._okButton.released.connect(self.accept)
+        self._cancelButton.released.connect(self.reject)
+
+        l = QGridLayout()
+        l.addWidget(QLabel("ROI Name:"), 0, 0)
+        l.addWidget(self._nameField, 0, 1)
+        l.addWidget(QLabel("ROI #:"), 1, 0)
+        l.addWidget(self._numberField, 1, 1)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addWidget(self._okButton)
+        buttonLayout.addWidget(self._cancelButton)
+
+        ll = QVBoxLayout()
+        ll.addLayout(l)
+        ll.addLayout(buttonLayout)
+        self.setLayout(ll)
+
+    def getValues(self) -> t_.Tuple[str, int]:
+        if self.result() != QDialog.Accepted:
+            raise ValueError("Getting dialog values only allowed if the result was accepted.")
+        return self._nameField.text(), self._numberField.value()
