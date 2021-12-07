@@ -329,7 +329,7 @@ class RoiPlot(QWidget):
 
         selectedRoiParams = [r for r in self.rois if r.selected]
 
-        if not len(selectedRoiParams) == 0:  # If no rois are selected then some actions can't be performed
+        if len(selectedRoiParams) == 0:  # If no rois are selected then some actions can't be performed
             deleteAction.setEnabled(False)
             moveAction.setEnabled(False)
             copyAction.setEnabled(False)
