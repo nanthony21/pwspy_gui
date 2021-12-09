@@ -170,7 +170,8 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
         self.polySub = QGroupBox("Polynomial Subtraction")
         self.polySub.setFixedSize(150, 50)
         self.polySub.setToolTip("A polynomial is fit to each spectrum and then it is subtracted from the spectrum."
-                                        "This is so that we remove effects of absorbtion and our final signal is only due to interference")
+                                "This is so that we remove effects of absorbtion and our final signal is only due to interference"
+                                "For liquid covered samples this is always set to 0. For samples in air a 2nd order polynomial is used.")
         layout = QGridLayout()
         layout.setContentsMargins(5, 1, 5, 5)
         _ = layout.addWidget
@@ -179,7 +180,29 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
         _(self.polynomialOrder, 0, 1, 1, 1)
         self.polySub.setLayout(layout)
         self._layout.addWidget(self.polySub, row, 0, 1, 2)
+
+        # WaveNumber Filtering
+        self.waveNumberCutoff = QHDoubleSpinBox()
+        self.waveNumberCutoff.setValue(4.3)  # OPD = estimated depth * 2(roundtrip) * 1.37 (RI of cell). DOF=1.1um -> OPD = 2.95. To achieve 5% attenuation at 2.95um a 3dB cutoff of 4.3 is selected (4th-order butterworth)
+        self.cutoffWaveNumber = QCheckBox("Perform Filtering")
+        self.cutoffWaveNumber.stateChanged.connect(lambda state: self.waveNumberCutoff.setEnabled(state != QtCore.Qt.Unchecked))
+        self.cutoffWaveNumber.setCheckState(QtCore.Qt.Checked)
+        self.cutoffWaveNumber.setCheckState(QtCore.Qt.Unchecked)  # Default to off
+
+        layout = QGridLayout()
+        layout.setContentsMargins(5, 1, 5, 5)
+
+        layout.addWidget(self.cutoffWaveNumber, 0, 0, 1, 2)
+        layout.addWidget(QLabel("OPD Cutoff (um)"), 1, 0, 1, 1)
+        layout.addWidget(self.waveNumberCutoff, 1, 1, 1, 1)
+        wnFilter = QGroupBox("OPD Filtering")
+        wnFilter.setLayout(layout)
+        wnFilter.setToolTip("A 4th order buttersworth filter will be applied to the spectra (x axis: wavenumber) at the specified cutoff frequency."
+                            "The cutoff is the frequency at which the attenuation will be -3dB. After the cutoff the attenuation slope will be 80dB per decade.")
+        self._layout.addWidget(wnFilter, row, 2, 1, 2)
+
         row += 1
+
 
         '''Advanced Calculations'''
         self.advanced = CollapsibleSection('Skip Advanced Analysis', 200, self)
@@ -235,6 +258,11 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
         self.minSubCheckBox.setCheckState(2 if settings.autoCorrMinSub else 0)
         self.relativeUnits.setCheckState(2 if settings.relativeUnits else 0)
         self.hardwareCorrections.loadCameraCorrection(settings.cameraCorrection)
+        if settings.waveNumberCutoff is None:
+            self.cutoffWaveNumber.setCheckState(QtCore.Qt.Unchecked)
+        else:
+            self.cutoffWaveNumber.setCheckState(QtCore.Qt.Checked)
+            self.waveNumberCutoff.setValue(settings.waveNumberCutoff)
 
     def getSettings(self) -> PWSRuntimeAnalysisSettings:
         erMetadata, refMaterial, numericalAperture = self.extraReflection.getSettings()
@@ -268,7 +296,8 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
                                                                        numericalAperture=numericalAperture,
                                                                        relativeUnits=self.relativeUnits.checkState() != 0,
                                                                        cameraCorrection=self.hardwareCorrections.getCameraCorrection(),
-                                                                       extraReflectanceId=erMetadata.idTag if erMetadata is not None else None),
+                                                                       extraReflectanceId=erMetadata.idTag if erMetadata is not None else None,
+                                                                       waveNumberCutoff=self.waveNumberCutoff.value() if self.cutoffWaveNumber.checkState != QtCore.Qt.Unchecked else None),
                                           extraReflectanceMetadata=erMetadata,
                                           referenceMetadata=refMeta,
                                           cellMetadata=cellMeta,
