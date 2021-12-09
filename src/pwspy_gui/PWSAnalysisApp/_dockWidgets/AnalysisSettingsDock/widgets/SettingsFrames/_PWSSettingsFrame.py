@@ -183,7 +183,7 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
 
         # WaveNumber Filtering
         self.waveNumberCutoff = QHDoubleSpinBox()
-        self.waveNumberCutoff.setValue(4.1)  # OPD = estimated depth * 2(roundtrip) * 1.37 (RI of cell). For depth 1.5 -> opd = 4.1  # TODO determine default
+        self.waveNumberCutoff.setValue(4.3)  # OPD = estimated depth * 2(roundtrip) * 1.37 (RI of cell). DOF=1.1um -> OPD = 2.95. To achieve 5% attenuation at 2.95um a 3dB cutoff of 4.3 is selected (4th-order butterworth)
         self.cutoffWaveNumber = QCheckBox("Perform Filtering")
         self.cutoffWaveNumber.stateChanged.connect(lambda state: self.waveNumberCutoff.setEnabled(state != QtCore.Qt.Unchecked))
         self.cutoffWaveNumber.setCheckState(QtCore.Qt.Checked)
@@ -193,7 +193,7 @@ class PWSSettingsFrame(AbstractSettingsFrame, QScrollArea):
         layout.setContentsMargins(5, 1, 5, 5)
 
         layout.addWidget(self.cutoffWaveNumber, 0, 0, 1, 2)
-        layout.addWidget(QLabel("Cutoff (um)"), 1, 0, 1, 1)
+        layout.addWidget(QLabel("OPD Cutoff (um)"), 1, 0, 1, 1)
         layout.addWidget(self.waveNumberCutoff, 1, 1, 1, 1)
         wnFilter = QGroupBox("OPD Filtering")
         wnFilter.setLayout(layout)
