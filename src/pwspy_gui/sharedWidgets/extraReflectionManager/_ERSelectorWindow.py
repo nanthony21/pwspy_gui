@@ -79,6 +79,7 @@ class ERSelectorWindow(QDialog):
     # noinspection PyUnresolvedReferences
     def __init__(self, manager: ERManager, parent: Optional[QWidget] = None):
         self._manager = manager
+        self._plots = []  # Use this to maintain references to plots
         self._selectedMetadata: Optional[pwsdt.ERMetaData] = None
         super().__init__(parent)
         self.setModal(False)
@@ -154,7 +155,7 @@ class ERSelectorWindow(QDialog):
 
     def _plot3dData(self, widgetItem):
         er = pwsdt.ExtraReflectanceCube.fromHdfFile(self._manager._directory, widgetItem.name)
-        PlotNd(er.data, indices=[range(er.data.shape[0]), range(er.data.shape[1]), er.wavelengths])
+        self._plots.append(PlotNd(er.data, indices=[range(er.data.shape[0]), range(er.data.shape[1]), er.wavelengths]))
 
     def _downloadCheckedItems(self):
         try :
