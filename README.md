@@ -3,18 +3,13 @@ A collection of GUIs providing users with easy access to the pwspy library. The 
 
 ![alt text](docs/Picture1.png)
 
-## Documentation
-This project is automatically documented by "Sphinx". If you have Sphinx installed then you can compile documentation to HTML 
-by navigating to the `docs` folder and running `make html`. Formats other than HTML are also possible. Documentation is
-hosted online at [ReadTheDocs](https://pwspy_gui.readthedocs.io/en/dev/) updating of documentation from the current version on Bitbucket can be performed
-by signing into the lab's account at `readthedocs.org`.
 
 ## Installation
 The first step in installation is to install [Anaconda](https://www.anaconda.com/products/individual) on your computer. Once installation
 is completed you will be able to install `PWSpy_gui` by typing commands into the terminal. On Mac and Linux you can use the standard terminal, on Windows you
 should open "Anaconda Prompt".
 It is advisable to install `PWSpy_gui` into its own "environment" to avoid dependency conflicts. 
-Create a new environment with the command: `conda create -n {environmentName} python=3.7`. You can then make the new environment active in your terminal with `conda activate {environmentName}`.
+Create a new environment with the command: `conda create -n {environmentName} python=3.8`. You can then make the new environment active in your terminal with `conda activate {environmentName}`.
 
 More information [here](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
 
