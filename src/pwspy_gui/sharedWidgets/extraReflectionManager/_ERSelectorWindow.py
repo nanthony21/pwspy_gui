@@ -76,7 +76,6 @@ class ERTreeWidgetItem(QTreeWidgetItem):
 class ERSelectorWindow(QDialog):
     selectionChanged = QtCore.pyqtSignal(object) #Usually an ERMetaData object, sometimes None
 
-    # noinspection PyUnresolvedReferences
     def __init__(self, manager: ERManager, parent: Optional[QWidget] = None):
         self._manager = manager
         self._plots = []  # Use this to maintain references to plots

@@ -35,7 +35,7 @@ setup(name='pwspy_gui',
       author='Nick Anthony',
       author_email='nicholas.anthony@northwestern.edu',
       url='https://github.com/nanthony21/pwspy_gui',
-      python_requires='>=3.7',
+      python_requires='>=3.7,<3.10',  # In python 3.10 a chnage occured which means that PyQt no longer implicitly converts float to int. Causes crashes.
       install_requires=['numpy',
                         'matplotlib',
                         'psutil',
