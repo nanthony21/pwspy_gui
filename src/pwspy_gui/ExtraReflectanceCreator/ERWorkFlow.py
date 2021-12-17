@@ -227,6 +227,8 @@ class ERWorkFlow:
                     title=str(matCombo)
                 )
             logger = logging.getLogger(__name__)
+            erCube.data[np.isnan(erCube.data)] = 0  # Somehow a nan can still get through. This will mess everything up.
+            erCube.data[erCube.data < 0] = 0
             logger.info(f"Final data max is {erCube.data.max()}")
             logger.info(f"Final data min is {erCube.data.min()}")
             self.figs.append(dock)  # keep track of opened figures.

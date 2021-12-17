@@ -17,8 +17,7 @@
 
 from __future__ import annotations
 import os
-from typing import Optional, Tuple
-
+import typing as t_
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtGui import QPalette, QValidator, QDoubleValidator
 from PyQt5.QtWidgets import QGroupBox, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox, QDoubleSpinBox, \
@@ -28,8 +27,7 @@ from pwspy_gui import resources
 from pwspy_gui.PWSAnalysisApp.sharedWidgets import CollapsibleSection
 from pwspy.dataTypes import CameraCorrection, ERMetaData
 from pwspy.utility.reflection import reflectanceHelper, Material
-import typing
-if typing.TYPE_CHECKING:
+if t_.TYPE_CHECKING:
     from pwspy_gui.sharedWidgets.extraReflectionManager import ERManager
 
 
@@ -83,7 +81,7 @@ class ExtraReflectanceSelector(QGroupBox):
         layout.addLayout(rLayout)
         self.setLayout(layout)
 
-    def getSettings(self) -> Tuple[ERMetaData, Material, float]:
+    def getSettings(self) -> t_.Tuple[ERMetaData, Material, float]:
         self._initializeERSelector()
         if self.ERExplorer.getSelectedMetadata() is None:
             ans = QMessageBox.question(self, "Uh", "An extra reflectance cube has not been selected. Do you want to ignore this important correction?")
@@ -98,7 +96,7 @@ class ExtraReflectanceSelector(QGroupBox):
         refMaterial = Material[self.refMaterialCombo.currentText()]
         return erMd, refMaterial, numericalAperture
 
-    def getSelectedERMetadata(self) -> Optional[ERMetaData]:
+    def getSelectedERMetadata(self) -> t_.Optional[ERMetaData]:
         return self.ERExplorer.getSelectedMetadata()
 
     def loadFromSettings(self, numericalAperture: float, referenceMaterial: Material, extraReflectanceId: str):
@@ -123,7 +121,7 @@ class ExtraReflectanceSelector(QGroupBox):
         if self.ERExplorer is None:  # Don't initialize the ERSelector window until we actually need it. It can be slow to initiate
             self.ERExplorer = self._erManager.createSelectorWindow(self)
 
-            def extraReflectionChanged(md: Optional[ERMetaData]):
+            def extraReflectionChanged(md: t_.Optional[ERMetaData]):
                 if md is None:
                     self.RSubtractionNameLabel.setText('None')
                 else:
@@ -177,7 +175,7 @@ class HardwareCorrections(CollapsibleSection):
             cameraCorrection = None
         return cameraCorrection
 
-    def loadCameraCorrection(self, camCorr: Optional[CameraCorrection] = None):
+    def loadCameraCorrection(self, camCorr: t_.Optional[CameraCorrection] = None):
         if camCorr is None: #Automatic camera corrections
             self.setCheckState(2)
         else:
@@ -234,9 +232,9 @@ def humble(clas):
     return HumbleDoubleSpinBox
 
 
-QHSpinBox = humble(QSpinBox)
-QHDoubleSpinBox = humble(QDoubleSpinBox)
-QHComboBox = humble(QComboBox)
+QHSpinBox: t_.Type[QSpinBox] = humble(QSpinBox)
+QHDoubleSpinBox: t_.Type[QDoubleSpinBox] = humble(QDoubleSpinBox)
+QHComboBox: t_.Type[QComboBox] = humble(QComboBox)
 
 
 class VerticallyCompressedWidget(QWidget):

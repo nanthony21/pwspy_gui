@@ -16,7 +16,7 @@ build:
 
 requirements:
   build:
-    - python >=3.7
+    - python >=3.7,<3.10  # In python 3.10 a change occurred so that PyQt no longer implicitly converts float to int. causees crashes.
     - setuptools
     - setuptools_scm
 
@@ -32,7 +32,7 @@ requirements:
     - google-auth-httplib2
     - google-auth-oauthlib
     - pyqt =5
-    - pwspy >=0.2.12 # Core pws package, available on backmanlab anaconda cloud account.
+    - pwspy >=0.2.13 # Core pws package, available on backmanlab anaconda cloud account.
     - mpl_qt_viz >1.0.9  # Plotting package available on PyPi and the backmanlab anaconda cloud account and conda-forge. Written for this project by Nick Anthony
     - descartes
     - cachetools >=4

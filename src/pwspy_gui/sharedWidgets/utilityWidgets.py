@@ -33,10 +33,10 @@ class AspectRatioWidget(QWidget):
         newWidth = height * self._aspect #the ideal width based on the new commanded height
         #Now determine which of the new dimensions to use.
         if width > newWidth:
-            self.setMaximumWidth(newWidth)
+            self.setMaximumWidth(int(newWidth))
             self.setMaximumHeight(QWIDGETSIZE_MAX)
         else:
-            self.setMaximumHeight(newHeight)
+            self.setMaximumHeight(int(newHeight))
             self.setMaximumWidth(QWIDGETSIZE_MAX)
 
     def setAspect(self, aspect: float):
