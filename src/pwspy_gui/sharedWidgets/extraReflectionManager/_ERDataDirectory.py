@@ -104,8 +104,12 @@ class ERDataDirectory(ERAbstractDirectory):
         files = [ERMetaData.fromHdfFile(directory, name) for directory, name in files]
         calculatedIndex = self._buildIndexFromFiles(files, skipMD5=skipMD5)
         d = self._compareIndexes(calculatedIndex, self.index, skipMD5=skipMD5)
-        d = pandas.DataFrame(d).transpose()
-        d.columns.values[1] = 'Local Status'
+        if len(d) == 0:
+            #This happens when no files are found
+            d = pandas.DataFrame({'idTag': [], 'Local Status': []})
+        else:
+            d = pandas.DataFrame(d).transpose()
+            d.columns.values[1] = 'Local Status'
         return d
 
     @staticmethod
