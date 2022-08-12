@@ -1,0 +1,22 @@
+name: pwspyGuiDev
+channels:
+  - backmanlab
+  - conda-forge
+dependencies:
+  - setuptools
+  - setuptools_scm
+  - python >=3.7,<3.10
+  - numpy >=1.16
+  - psutil
+  - shapely
+  - pandas
+  - matplotlib >=1.4
+  - jsonschema
+  - google-api-python-client
+  - google-auth-httplib2
+  - google-auth-oauthlib
+  - pyqt =5
+  - pwspy >=1.0.2 # Core pws package, available on backmanlab anaconda cloud account.
+  - mpl_qt_viz >1.0.9  # Plotting package available on PyPi and the backmanlab anaconda cloud account and conda-forge. Written for this project by Nick Anthony
+  - descartes
+  - cachetools >=4
