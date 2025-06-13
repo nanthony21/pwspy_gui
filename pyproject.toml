@@ -1,3 +1,39 @@
 [build-system]
-# Minimum requirements for the build system to execute.
-requires = ["setuptools", "wheel", "setuptools_scm"]  # PEP 508 specifications.
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pwspy_gui"
+dynamic = ["version"]
+requires-python = '>=3.7'
+description='A collection of GUIs providing users with easy access to PWS data analysis.'
+readme = "README.md"
+authors=[{name='Nick Anthony', email='nickmanthony@hotmail.com'}]
+license = "GPL-3.0-or-later"
+dependencies = [
+    'numpy',
+    'matplotlib',
+    'psutil',
+    'shapely',
+    'pandas',
+    'jsonschema',
+    'google-api-python-client',
+    'google-auth-httplib2',
+    'google-auth-oauthlib',
+    'pwspy>=1.0.1', # Core pws package, available on backmanlab anaconda cloud account.
+    'mpl_qt_viz>1.0.9', # Plotting package available on PyPi and the backmanlab anaconda cloud account. Written for this project by Nick Anthony
+    'descartes',
+    'cachetools>=4',
+]
+[project.urls]
+Repository="https://github.com/nanthony21/pwspy_gui"
+
+[project.gui-scripts]
+PWSAnalysis = "pwspy_gui.PWSAnalysisApp.__main__:main"
+ERCreator = "pwspy_gui.ExtraReflectanceCreator.__main__:main"
+
+[tool.hatch.version]
+source="vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/pwspy_gui/version.py"
